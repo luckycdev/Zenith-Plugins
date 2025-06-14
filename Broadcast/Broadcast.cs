@@ -14,7 +14,7 @@ public class BroadcastPlugin : IPlugin
     {
         GameServer.Instance.ChatCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
         GameServer.Instance.ConsoleCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
-        Console.WriteLine("Broadcast Plugin Initialized!");
+        Console.WriteLine("[BroadcastPlugin] Initialized!");
     }
 
     public void Shutdown()
@@ -22,9 +22,27 @@ public class BroadcastPlugin : IPlugin
         Console.WriteLine("[BroadcastPlugin] Shutdown!");
     }
 
-    [Command("Broadcast a message to all players.", "broadcast", "Broadcast a message.")]
+    [Command("Broadcast a message to all players from chat.", "broadcast", "Broadcast a message.")]
     [RequireAuth(AccessLevel.Moderator)]
-    public class BroadcastChatCommand : BaseCommand
+    public class BroadcastChatCommand : ChatCommand
+    {
+        [CommandArgument("Message")]
+        public string Message { get; set; }
+
+        public override void Handle(string[] args)
+        {
+            if (string.IsNullOrWhiteSpace(Message))
+            {
+                SendMessage("You must provide a message to broadcast.", LogMessageType.Error);
+                return;
+            }
+
+            GameServer.Instance.BroadcastChatMessage($"[BROADCAST] {Message}", new UnityEngine.Color(1f, 0f, 0f));
+        }
+    }
+
+    [Command("Broadcast a message to all players from console.", "broadcast", "Broadcast a message.")]
+    public class BroadcastConsoleCommand : BaseCommand
     {
         [CommandArgument("Message")]
         public string Message { get; set; }
