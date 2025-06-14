@@ -1,4 +1,4 @@
-1. You need to have the [server](https://github.com/luckycdev/Zenith) built (see Zenith README for instructions, or just download the build release)
+1. You need to have the [server](https://github.com/luckycdev/Zenith) built (see [Zenith README](https://github.com/luckycdev/Zenith/blob/main/README.md#instructions) for instructions, or just download the [build release](https://github.com/luckycdev/Zenith/releases)
 
 2. In a folder, `run dotnet new classlib -n PluginName` (change PluginName to your plugins name)
 
@@ -8,7 +8,7 @@
 
 5. Create your plugin (see TestPlugin.cs for reference)
 
-6. Build it (I have only tested it with [dotnet 5.0.408](https://builds.dotnet.microsoft.com/dotnet/Sdk/5.0.408/dotnet-sdk-5.0.408-win-x86.exe)
+6. Build it (I have only tested it with [dotnet 5.0.408](https://builds.dotnet.microsoft.com/dotnet/Sdk/5.0.408/dotnet-sdk-5.0.408-win-x86.exe))
 
 7. Simply add your plugins .dll file from bin/Debug/net5.0/ into the servers plugins/ folder!
 
