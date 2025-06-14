@@ -1,10 +1,10 @@
 1. You need to have the [server](https://github.com/luckycdev/Zenith) built (see [Zenith README](https://github.com/luckycdev/Zenith/blob/main/README.md#instructions) for instructions, or just download the [build release](https://github.com/luckycdev/Zenith/releases)
 
-2. In a folder, `run dotnet new classlib -n PluginName` (change PluginName to your plugins name)
+2. In a folder, run `dotnet new classlib -n PluginName` (change PluginName to your plugins name)
 
 3. Open the csproj in [Visual Studio 2019](https://download.visualstudio.microsoft.com/download/pr/e84651e1-d13a-4bd2-a658-f47a1011ffd1/e17f0d85d70dc9f1e437a78a90dcfc527befe3dc11644e02435bdfe8fd51da27/vs_Community.exe)
 
-4. Right click on Dependencies and click Add Project Reference, then at the bottom right hit browse, then select ServerShared.dll from the build from step 1
+4. Right click on Dependencies and click Add Project Reference, then at the bottom right hit browse, then select ServerShared.dll from the build from step 1*
 
 5. Create your plugin (see TestPlugin.cs for reference)
 
@@ -12,5 +12,6 @@
 
 7. Simply add your plugins .dll file from bin/Debug/net5.0/ into the servers plugins/ folder!
 
+*While developing some plugins, you may need to add more dependencies. For the Broadcast plugin, I had to add Lidgren.Network.dll and UnityEngine.CoreModule.dll along with ServerShared.dll
 
 For support join https://discord.gg/GVKxbXtbqH
