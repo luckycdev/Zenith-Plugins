@@ -31,12 +31,6 @@ public class BroadcastPlugin : IPlugin
 
         public override void Handle(string[] args)
         {
-            if (string.IsNullOrWhiteSpace(Message))
-            {
-                SendMessage("You must provide a message to broadcast.", LogMessageType.Error);
-                return;
-            }
-
             GameServer.Instance.BroadcastChatMessage($"[BROADCAST] {Message}", new UnityEngine.Color(1f, 0f, 0f));
         }
     }
@@ -49,12 +43,6 @@ public class BroadcastPlugin : IPlugin
 
         public override void Handle(string[] args)
         {
-            if (string.IsNullOrWhiteSpace(Message))
-            {
-                SendMessage("You must provide a message to broadcast.", LogMessageType.Error);
-                return;
-            }
-
             GameServer.Instance.BroadcastChatMessage($"[BROADCAST] {Message}", new UnityEngine.Color(1f, 0f, 0f));
         }
     }
