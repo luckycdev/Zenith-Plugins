@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,6 +14,8 @@ public class BotConfig
 {
     public string BotToken { get; set; } = "YOUR_BOT_TOKEN_HERE";
     public ulong ChannelId { get; set; } = 123456789012345678;
+    public bool JoinLeaveMessages { get; set; } = false;
+    public bool StartStopMessages { get; set; } = true;
 }
 
 public class GOICord : IPlugin
@@ -24,6 +26,10 @@ public class GOICord : IPlugin
     private ISocketMessageChannel discordChannel;
 
     public string Name => "GOICord";
+
+    public string Version => "0.2";
+
+    public string Author => "luckycdev";
 
     public void Initialize()
     {
@@ -37,15 +43,39 @@ public class GOICord : IPlugin
         // chat to discord
         GameServer.Instance.OnChatMessageReceived += OnGameChatMessage;
 
+        if (config.JoinLeaveMessages == true)
+        {
+            GameServer.Instance.OnPlayerJoined += OnPlayerJoined;
+            GameServer.Instance.OnPlayerLeft += OnPlayerLeft;
+        }
+
         // discord to chat
         discordClient.MessageReceived += OnDiscordMessageReceived;
 
-        Console.WriteLine("[GOICord] Initialized!");
+        Logger.LogInfo("[GOICord] Initialized!");
+
+        if (config.StartStopMessages == true)
+        {
+            if (discordChannel != null)
+                _ = discordChannel.SendMessageAsync($"**Server Started!**");
+        }
     }
 
     public void Shutdown()
     {
         GameServer.Instance.OnChatMessageReceived -= OnGameChatMessage;
+
+        if (config.StartStopMessages == true)
+        {
+            if (discordChannel != null)
+                _ = discordChannel.SendMessageAsync($"**Server Stopped!**").GetAwaiter().GetResult();
+        }
+
+        if (config.JoinLeaveMessages == true)
+        {
+            GameServer.Instance.OnPlayerJoined -= OnPlayerJoined;
+            GameServer.Instance.OnPlayerLeft -= OnPlayerLeft;
+        }
 
         if (discordClient != null)
         {
@@ -54,7 +84,7 @@ public class GOICord : IPlugin
             discordClient.Dispose();
         }
 
-        Console.WriteLine("[GOICord] Shutdown!");
+        Logger.LogInfo("[GOICord] Shutdown!");
     }
 
     private async Task OnDiscordMessageReceived(SocketMessage message)
@@ -69,6 +99,27 @@ public class GOICord : IPlugin
 
         if (string.IsNullOrWhiteSpace(content)) return;
 
+        if (content == "!info")
+        {
+            var builder = new System.Text.StringBuilder();
+
+            builder.AppendLine($"Name: {GameServer.Instance.Name}");
+            builder.AppendLine($"Player Count: {GameServer.Instance.Players.Count}/{GameServer.Instance.MaxPlayers}");
+
+            if (GameServer.Instance.Players.Count != 0)
+            {
+                builder.AppendLine("Player List:");
+
+                foreach (var player in GameServer.Instance.Players.Values)
+                {
+                    builder.AppendLine($"- {player.Name}");
+                }
+            }
+
+            _ = discordChannel.SendMessageAsync(builder.ToString());
+            return; // dont send to game chat
+        }
+
         string gameChatMessage = $"[Discord] {username}: {content}";
 
         GameServer.Instance.BroadcastChatMessage(gameChatMessage, new UnityEngine.Color(0.345f, 0.396f, 0.949f));
@@ -76,10 +127,21 @@ public class GOICord : IPlugin
         await Task.CompletedTask;
     }
 
+    private void OnGameChatMessage(NetPlayer sender, string message)
+    {
+        if (discordChannel == null) return;
+
+        var username = sender?.Name ?? "Server";
+        var discordMessage = $"**{username}:** {message}";
+
+        // send msg
+        _ = discordChannel.SendMessageAsync(discordMessage);
+    }
+
     private void LoadOrCreateConfig()
     {
         string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        configFilePath = Path.Combine(pluginFolder, "GOICord.conf");
+        configFilePath = Path.Combine(pluginFolder, "config.json");
 
         if (!File.Exists(configFilePath))
         {
@@ -87,9 +149,9 @@ public class GOICord : IPlugin
             var options = new JsonSerializerOptions { WriteIndented = true };
             var json = JsonSerializer.Serialize(config, options);
             File.WriteAllText(configFilePath, json);
-            Console.WriteLine($"[GOICord] Config file created: {configFilePath}");
+            Logger.LogDebug($"[GOICord] Config file created: {configFilePath}");
 
-            Logger.LogWarning("[GOICord] Please update the config file with your bot token and channel ID.");
+            Logger.LogError("[GOICord] Please update the config file with your bot token and channel ID.");
         }
         else
         {
@@ -97,12 +159,12 @@ public class GOICord : IPlugin
             config = JsonSerializer.Deserialize<BotConfig>(json);
 
             if (string.IsNullOrWhiteSpace(config.BotToken) || config.BotToken == "YOUR_BOT_TOKEN_HERE")
-                Logger.LogWarning("[GOICord] BotToken in config file is not set. Please update it.");
+                Logger.LogError("[GOICord] BotToken in config file is not set. Please update it.");
 
             if (config.ChannelId == 123456789012345678)
-                Logger.LogWarning("[GOICord] ChannelId in config file is not set. Please update it.");
+                Logger.LogError("[GOICord] ChannelId in config file is not set. Please update it.");
         }
-    }
+}
 
     private async Task InitializeDiscordBotAsync()
     {
@@ -126,28 +188,29 @@ public class GOICord : IPlugin
 
         if (discordChannel == null)
         {
-            Logger.LogWarning($"[GOICord] Could not find channel with ID {config.ChannelId}");
+            Logger.LogError($"[GOICord] Could not find channel with ID {config.ChannelId}");
         }
         else
         {
-            Console.WriteLine($"[GOICord] Connected to Discord channel {discordChannel.Name}");
+            Logger.LogInfo($"[GOICord] Connected to Discord channel {discordChannel.Name}");
         }
     }
 
     private Task LogDiscordMessage(LogMessage msg)
     {
-        Console.WriteLine($"[GOICord Backend] {msg.ToString()}");
+        Logger.LogDebug($"[GOICord Backend] {msg.ToString()}");
         return Task.CompletedTask;
     }
 
-    private void OnGameChatMessage(NetPlayer sender, string message)
+    private void OnPlayerJoined(NetPlayer player)
     {
-        if (discordChannel == null) return;
+        if (discordChannel != null)
+            _ = discordChannel.SendMessageAsync($"**{player.Name} joined the server.**");
+    }
 
-        var username = sender?.Name ?? "Server";
-        var discordMessage = $"**{username}:** {message}";
-
-        // send msg
-        _ = discordChannel.SendMessageAsync(discordMessage);
+    private void OnPlayerLeft(NetPlayer player)
+    {
+        if (discordChannel != null)
+            _ = discordChannel.SendMessageAsync($"**{player.Name} left the server.**");
     }
 }

@@ -1,17 +1,21 @@
-﻿using System;
-using ServerShared.Plugins;
+﻿using ServerShared.Plugins;
+using ServerShared.Logging;
 
 public class TestPlugin : IPlugin
 {
     public string Name => "Test Plugin";
 
+    public string Version => "1.0";
+
+    public string Author => "luckycdev";
+
     public void Initialize()
     {
-        Console.WriteLine("[TestPlugin] Initialized!");
+        Logger.LogInfo("[TestPlugin] Initialized!");
     }
 
     public void Shutdown()
     {
-        Console.WriteLine("[TestPlugin] Shutdown!");
+        Logger.LogInfo("[TestPlugin] Shutdown!");
     }
 }
