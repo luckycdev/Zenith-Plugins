@@ -33,7 +33,7 @@ public class GOICord : IPlugin
 
     public string Name => "GOICord";
 
-    public string Version => "0.3";
+    public string Version => "0.3.1";
 
     public string Author => "luckycdev";
 
@@ -122,8 +122,9 @@ public class GOICord : IPlugin
                 {
                     builder.AppendLine($"- {player.Name}");
                 }
-                builder.AppendLine($"-# GOICord version {Version} on Zenith version {SharedConstants.ZenithVersion} (GOIMP version {SharedConstants.Version})");
             }
+
+            builder.AppendLine($"-# GOICord version {Version} on Zenith version {SharedConstants.ZenithVersion} (GOIMP version {SharedConstants.Version})");
 
             _ = discordChannel.SendMessageAsync(builder.ToString());
             return; // dont send to game chat
