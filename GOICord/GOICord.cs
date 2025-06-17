@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Reflection;
@@ -33,7 +34,7 @@ public class GOICord : IPlugin
 
     public string Name => "GOICord";
 
-    public string Version => "0.3.1";
+    public string Version => "0.4";
 
     public string Author => "luckycdev";
 
@@ -41,10 +42,24 @@ public class GOICord : IPlugin
     {
         LoadOrCreateConfig();
 
-        Task.Run(async () =>
+        try
         {
-            await InitializeDiscordBotAsync();
-        }).GetAwaiter().GetResult();
+            Task.Run(async () =>
+            {
+                await InitializeDiscordBotAsync();
+            }).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[GOICord] Failed to initialize Discord bot: {ex.Message}");
+            return; // give up loading the plugin so it doesnt keep looping forever
+        }
+
+        if (discordClient == null || discordChannel == null) // dont let it continue trying if it isnt working
+        {
+            Logger.LogError("[GOICord] Initialization aborted due to being unable to connect!");
+            return;
+        }
 
         // chat to discord
         GameServer.Instance.OnChatMessageReceived += OnGameChatMessage;
@@ -159,9 +174,10 @@ public class GOICord : IPlugin
             var options = new JsonSerializerOptions { WriteIndented = true };
             var json = JsonSerializer.Serialize(config, options);
             File.WriteAllText(configFilePath, json);
+
             Logger.LogDebug($"[GOICord] Config file created: {configFilePath}");
 
-            Logger.LogError("[GOICord] Please update the config file with your bot token and channel ID.");
+            Logger.LogError($"[GOICord] Please update {configFilePath} with your bot token and channel ID!");
         }
         else
         {
@@ -169,10 +185,10 @@ public class GOICord : IPlugin
             config = JsonSerializer.Deserialize<BotConfig>(json);
 
             if (string.IsNullOrWhiteSpace(config.BotToken) || config.BotToken == "YOUR_BOT_TOKEN_HERE")
-                Logger.LogError("[GOICord] BotToken in config file is not set. Please update it.");
+                Logger.LogError($"[GOICord] BotToken in {configFilePath} is not set!");
 
             if (config.ChannelId == 123456789012345678)
-                Logger.LogError("[GOICord] ChannelId in config file is not set. Please update it.");
+                Logger.LogError($"[GOICord] ChannelId in {configFilePath} is not set!");
         }
 }
 
@@ -188,37 +204,61 @@ public class GOICord : IPlugin
         discordClient = new DiscordSocketClient(socketConfig);
         discordClient.Log += LogDiscordMessage;
 
-        await discordClient.LoginAsync(TokenType.Bot, config.BotToken);
-        await discordClient.StartAsync();
-
-        // wait until the bot is on
-        await Task.Delay(3000);
-
-        discordChannel = discordClient.GetChannel(config.ChannelId) as ISocketMessageChannel;
-
-        if (discordChannel == null)
+        try
         {
-            Logger.LogError($"[GOICord] Could not find channel with ID {config.ChannelId}");
+            await discordClient.LoginAsync(TokenType.Bot, config.BotToken);
+            await discordClient.StartAsync();
+
+            // wait until the bot is on
+            await Task.Delay(3000);
+
+            discordChannel = discordClient.GetChannel(config.ChannelId) as ISocketMessageChannel;
+
+            if (discordChannel == null)
+            {
+                throw new Exception($"Discord channel not found! Please check {configFilePath}");
+            }
         }
-        else
+        catch (Exception ex) // give up to prevent looping and preventing other plugins from loading
         {
-            Logger.LogInfo($"[GOICord] Connected to Discord channel {discordChannel.Name}");
+            Logger.LogError($"[GOICord] Discord bot connection failed: {ex.Message}");
+            discordClient.Dispose();
+            discordClient = null;
+            discordChannel = null;
+            throw;
         }
+
+        Logger.LogInfo($"[GOICord] Connected to Discord channel {discordChannel.Name}");
 
         _ = Task.Run(async () =>
         {
             while (true)
             {
-                UpdateBotStatus();
+                await UpdateBotStatus();
                 await Task.Delay(5000); // update status every 5 seconds
             }
         });
-
     }
 
-    private void UpdateBotStatus()
+    private async Task UpdateBotStatus()
     {
-        _ = discordClient.SetActivityAsync(new Game($"{GameServer.Instance.Players.Count} players on {GameServer.Instance.Name}", ActivityType.Watching));
+        try
+        {
+            if (GameServer.Instance.Players.Count == 1)
+            {
+                await discordClient.SetActivityAsync(
+                    new Game($"{GameServer.Instance.Players.Count} player on {GameServer.Instance.Name}", ActivityType.Watching));
+            }
+            else
+            {
+                await discordClient.SetActivityAsync(
+                    new Game($"{GameServer.Instance.Players.Count} players on {GameServer.Instance.Name}", ActivityType.Watching));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[GOICord] Failed to update bot status: {ex}");
+        }
     }
 
     private Task LogDiscordMessage(LogMessage msg)
