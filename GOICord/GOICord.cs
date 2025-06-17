@@ -1,8 +1,8 @@
-using System;
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
 using ServerShared;
@@ -25,9 +25,15 @@ public class GOICord : IPlugin
     private DiscordSocketClient discordClient;
     private ISocketMessageChannel discordChannel;
 
+    private static readonly Regex customEmojiRegex = new Regex(@"<a?:(\w+):\d+>", RegexOptions.Compiled);
+
+    private static readonly Regex unicodeEmojiRegex = new Regex(
+        @"([\uD800-\uDBFF][\uDC00-\uDFFF])",  // unicode characters like emojis
+        RegexOptions.Compiled);
+
     public string Name => "GOICord";
 
-    public string Version => "0.2";
+    public string Version => "0.3";
 
     public string Author => "luckycdev";
 
@@ -57,7 +63,7 @@ public class GOICord : IPlugin
         if (config.StartStopMessages == true)
         {
             if (discordChannel != null)
-                _ = discordChannel.SendMessageAsync($"**Server Started!**");
+                _ = discordChannel.SendMessageAsync($"🟢 Server **{GameServer.Instance.Name}** Started!");
         }
     }
 
@@ -68,7 +74,7 @@ public class GOICord : IPlugin
         if (config.StartStopMessages == true)
         {
             if (discordChannel != null)
-                _ = discordChannel.SendMessageAsync($"**Server Stopped!**").GetAwaiter().GetResult();
+                _ = discordChannel.SendMessageAsync($"🔴 Server **{GameServer.Instance.Name}** Stopped!").GetAwaiter().GetResult();
         }
 
         if (config.JoinLeaveMessages == true)
@@ -95,11 +101,13 @@ public class GOICord : IPlugin
         if (message.Channel.Id != config.ChannelId) return;
 
         string username = message.Author.Username;
-        string content = message.Content.Trim();
+        string rawcontent = message.Content.Trim();
+
+        string content = ConvertDiscordMessage(rawcontent);
 
         if (string.IsNullOrWhiteSpace(content)) return;
 
-        if (content == "!info")
+        if (rawcontent == "!info")
         {
             var builder = new System.Text.StringBuilder();
 
@@ -114,6 +122,7 @@ public class GOICord : IPlugin
                 {
                     builder.AppendLine($"- {player.Name}");
                 }
+                builder.AppendLine($"-# GOICord version {Version} on Zenith version {SharedConstants.ZenithVersion} (GOIMP version {SharedConstants.Version})");
             }
 
             _ = discordChannel.SendMessageAsync(builder.ToString());
@@ -194,6 +203,21 @@ public class GOICord : IPlugin
         {
             Logger.LogInfo($"[GOICord] Connected to Discord channel {discordChannel.Name}");
         }
+
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                UpdateBotStatus();
+                await Task.Delay(5000); // update status every 5 seconds
+            }
+        });
+
+    }
+
+    private void UpdateBotStatus()
+    {
+        _ = discordClient.SetActivityAsync(new Game($"{GameServer.Instance.Players.Count} players on {GameServer.Instance.Name}", ActivityType.Watching));
     }
 
     private Task LogDiscordMessage(LogMessage msg)
@@ -212,5 +236,19 @@ public class GOICord : IPlugin
     {
         if (discordChannel != null)
             _ = discordChannel.SendMessageAsync($"**{player.Name} left the server.**");
+    }
+
+    private string ConvertDiscordMessage(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return content;
+
+        // replace discord <name:id> emojis with :name:
+        string replacedCustom = customEmojiRegex.Replace(content, m => $":{m.Groups[1].Value}:");
+
+        // replace unicode characters with "[emoji]"
+        string final = unicodeEmojiRegex.Replace(replacedCustom, "[emoji]");
+
+        return final;
     }
 }
