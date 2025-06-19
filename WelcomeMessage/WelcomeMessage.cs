@@ -21,7 +21,7 @@ public class WelcomeMessage : IPlugin
 {
     public string Name => "WelcomeMessage";
 
-    public string Version => "1.0";
+    public string Version => "1.1";
 
     public string Author => "luckycdev";
 
