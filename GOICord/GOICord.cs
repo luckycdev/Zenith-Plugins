@@ -14,7 +14,7 @@ using ServerShared.Logging;
 public class BotConfig
 {
     public string BotToken { get; set; } = "YOUR_BOT_TOKEN_HERE";
-    public ulong ChannelId { get; set; } = 123456789012345678;
+    public ulong? ChannelId { get; set; } = 123456789012345678;
     public bool JoinLeaveMessages { get; set; } = false;
     public bool StartStopMessages { get; set; } = true;
 }
@@ -32,9 +32,11 @@ public class GOICord : IPlugin
         @"([\uD800-\uDBFF][\uDC00-\uDFFF])",  // unicode characters like emojis
         RegexOptions.Compiled);
 
+    private static readonly Regex mentionRegex = new Regex(@"<@!?(\d+)>|<@&(\d+)>|@everyone|@here", RegexOptions.Compiled); // make it so you cant ping users, roles, everyone, and here
+
     public string Name => "GOICord";
 
-    public string Version => "0.4";
+    public string Version => "0.5";
 
     public string Author => "luckycdev";
 
@@ -116,13 +118,12 @@ public class GOICord : IPlugin
         if (message.Channel.Id != config.ChannelId) return;
 
         string username = message.Author.Username;
-        string rawcontent = message.Content.Trim();
 
-        string content = ConvertDiscordMessage(rawcontent);
+        string content = ConvertDiscordMessage(message.Content.Trim());
 
         if (string.IsNullOrWhiteSpace(content)) return;
 
-        if (rawcontent == "!info")
+        if (content == "!info")
         {
             var builder = new System.Text.StringBuilder();
 
@@ -135,7 +136,8 @@ public class GOICord : IPlugin
 
                 foreach (var player in GameServer.Instance.Players.Values)
                 {
-                    builder.AppendLine($"- {player.Name}");
+                    var safePlayerName = mentionRegex.Replace(player.Name, "[mention]");
+                    builder.AppendLine($"- {safePlayerName}");
                 }
             }
 
@@ -157,7 +159,10 @@ public class GOICord : IPlugin
         if (discordChannel == null) return;
 
         var username = sender?.Name ?? "Server";
-        var discordMessage = $"**{username}:** {message}";
+
+        var safeMessage = mentionRegex.Replace(message, "[mention]");
+
+        var discordMessage = $"**{username}:** {safeMessage}";
 
         // send msg
         _ = discordChannel.SendMessageAsync(discordMessage);
@@ -189,8 +194,14 @@ public class GOICord : IPlugin
 
             if (config.ChannelId == 123456789012345678)
                 Logger.LogError($"[GOICord] ChannelId in {configFilePath} is not set!");
+
+            if (config.ChannelId == null)
+            {
+                Logger.LogError($"[GOICord] ChannelId in {configFilePath} is invalid!");
+                throw new Exception($"Discord channel ID '{config.ChannelId.Value}' not found! Please check {configFilePath}");
+            }
         }
-}
+    }
 
     private async Task InitializeDiscordBotAsync()
     {
@@ -212,7 +223,7 @@ public class GOICord : IPlugin
             // wait until the bot is on
             await Task.Delay(3000);
 
-            discordChannel = discordClient.GetChannel(config.ChannelId) as ISocketMessageChannel;
+            discordChannel = discordClient.GetChannel(config.ChannelId.Value) as ISocketMessageChannel;
 
             if (discordChannel == null)
             {
