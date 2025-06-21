@@ -10,6 +10,7 @@ using ServerShared;
 using ServerShared.Player;
 using ServerShared.Plugins;
 using ServerShared.Logging;
+using System.Net.Http;
 
 public class BotConfig
 {
@@ -36,7 +37,7 @@ public class GOICord : IPlugin
 
     public string Name => "GOICord";
 
-    public string Version => "0.5";
+    public string Version => "0.6";
 
     public string Author => "luckycdev";
 
@@ -82,6 +83,8 @@ public class GOICord : IPlugin
             if (discordChannel != null)
                 _ = discordChannel.SendMessageAsync($"🟢 Server **{GameServer.Instance.Name}** Started!");
         }
+
+        _ = CheckForNewerVersionAsync();
     }
 
     public void Shutdown()
@@ -303,4 +306,40 @@ public class GOICord : IPlugin
 
         return final;
     }
+
+    private async Task CheckForNewerVersionAsync()
+    {
+        try
+        {
+            using var http = new HttpClient();
+            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/GOICord/GOICord.cs");
+
+            var versionMatch = Regex.Match(
+                fileContent,
+                @"public\s+string\s+Version\s*=>\s*""([^""]+)"""
+            );
+
+            if (versionMatch.Success)
+            {
+                var remoteVersionStr = versionMatch.Groups[1].Value;
+                var localVersionStr = Version;
+
+                if (System.Version.TryParse(remoteVersionStr, out var remoteVersion) &&
+                    System.Version.TryParse(localVersionStr, out var localVersion))
+                {
+                    if (remoteVersion > localVersion)
+                    {
+                        Logger.LogWarning(
+                            $"[GOICord] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}"
+                        );
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[GOICord] Error checking for new version: {ex}");
+        }
+    }
+
 }
