@@ -8,6 +8,9 @@ using ServerShared.Player;
 using ServerShared;
 using Pyratron.Frameworks.Commands.Parser;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Text.RegularExpressions;
+using System;
 
 public class MessageConfig
 {
@@ -21,7 +24,7 @@ public class WelcomeMessage : IPlugin
 {
     public string Name => "WelcomeMessage";
 
-    public string Version => "1.1";
+    public string Version => "1.1.1";
 
     public string Author => "luckycdev";
 
@@ -38,8 +41,8 @@ public class WelcomeMessage : IPlugin
     private string message;
 
     private float rgb_r;
-    private float rgb_b;
     private float rgb_g;
+    private float rgb_b;
 
     public void Initialize()
     {
@@ -57,6 +60,8 @@ public class WelcomeMessage : IPlugin
         GameServer.Instance.OnPlayerJoined += OnPlayerJoined;
 
         Logger.LogInfo("[WelcomeMessage] Initialized!");
+
+        _ = CheckForNewerVersionAsync();
     }
 
     public void Shutdown()
@@ -156,6 +161,39 @@ public class WelcomeMessage : IPlugin
     {
         var json = JsonSerializer.Serialize(toggledIPs, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(toggledListFilePath, json);
+    }
+
+    private async Task CheckForNewerVersionAsync()
+    {
+        try
+        {
+            using var http = new HttpClient();
+            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/WelcomeMessage/WelcomeMessage.cs");
+
+            var versionMatch = Regex.Match(
+                fileContent,
+                @"public\s+string\s+Version\s*=>\s*""([^""]+)"""
+            );
+
+            if (versionMatch.Success)
+            {
+                var remoteVersionStr = versionMatch.Groups[1].Value;
+                var localVersionStr = Version;
+
+                if (System.Version.TryParse(remoteVersionStr, out var remoteVersion) &&
+                    System.Version.TryParse(localVersionStr, out var localVersion))
+                {
+                    if (remoteVersion > localVersion)
+                    {
+                        Logger.LogCustom($"[WelcomeMessage] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[WelcomeMessage] Error checking for new version: {ex}");
+        }
     }
 }
 

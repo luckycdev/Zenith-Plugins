@@ -37,7 +37,7 @@ public class GOICord : IPlugin
 
     public string Name => "GOICord";
 
-    public string Version => "0.6";
+    public string Version => "0.7";
 
     public string Author => "luckycdev";
 
@@ -65,7 +65,7 @@ public class GOICord : IPlugin
         }
 
         // chat to discord
-        GameServer.Instance.OnChatMessageReceived += OnGameChatMessage;
+        GameServer.Instance.OnChatMessageFinal += OnGameChatMessageFinal;
 
         if (config.JoinLeaveMessages == true)
         {
@@ -89,7 +89,7 @@ public class GOICord : IPlugin
 
     public void Shutdown()
     {
-        GameServer.Instance.OnChatMessageReceived -= OnGameChatMessage;
+        GameServer.Instance.OnChatMessageFinal -= OnGameChatMessageFinal;
 
         if (config.StartStopMessages == true)
         {
@@ -105,7 +105,6 @@ public class GOICord : IPlugin
 
         if (discordClient != null)
         {
-            discordClient.MessageReceived -= OnDiscordMessageReceived;
             discordClient.LogoutAsync().GetAwaiter().GetResult();
             discordClient.Dispose();
         }
@@ -157,15 +156,15 @@ public class GOICord : IPlugin
         await Task.CompletedTask;
     }
 
-    private void OnGameChatMessage(NetPlayer sender, string message)
+    private void OnGameChatMessageFinal(string playerName, string message, UnityEngine.Color color)
     {
         if (discordChannel == null) return;
 
-        var username = sender?.Name ?? "Server";
+        if (string.IsNullOrWhiteSpace(playerName)) return; // prevent duplicate join and leave messages
 
         var safeMessage = mentionRegex.Replace(message, "[mention]");
 
-        var discordMessage = $"**{username}:** {safeMessage}";
+        var discordMessage = $"**{playerName}:** {safeMessage}";
 
         // send msg
         _ = discordChannel.SendMessageAsync(discordMessage);
@@ -329,9 +328,7 @@ public class GOICord : IPlugin
                 {
                     if (remoteVersion > localVersion)
                     {
-                        Logger.LogWarning(
-                            $"[GOICord] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}"
-                        );
+                        Logger.LogCustom($"[GOICord] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
                     }
                 }
             }
@@ -341,5 +338,4 @@ public class GOICord : IPlugin
             Logger.LogError($"[GOICord] Error checking for new version: {ex}");
         }
     }
-
 }
