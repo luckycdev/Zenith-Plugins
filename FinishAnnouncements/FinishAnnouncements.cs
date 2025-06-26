@@ -1,0 +1,128 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using ServerShared;
+using ServerShared.Player;
+using ServerShared.Plugins;
+using ServerShared.Logging;
+
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+public class FinishAnnouncements : IPlugin
+{
+    public string Name => "FinishAnnouncements";
+
+    public string Version => "1.0";
+
+    public string Author => "luckycdev";
+
+    private Dictionary<int, DateTime> playerTimers = new();
+    private CancellationTokenSource cancellation;
+
+    public void Initialize()
+    {
+        GameServer.Instance.OnPlayerJoined += OnPlayerJoined;
+        GameServer.Instance.OnPlayerLeft += OnPlayerLeft;
+
+        cancellation = new CancellationTokenSource();
+
+        Logger.LogInfo("[FinishAnnouncements] Initialized!");
+
+        _ = CheckForNewerVersionAsync();
+
+        _ = CheckHeightLoopAsync(cancellation.Token);
+    }
+
+    public void Shutdown()
+    {
+        cancellation.Cancel();
+
+        GameServer.Instance.OnPlayerJoined -= OnPlayerJoined;
+        GameServer.Instance.OnPlayerLeft -= OnPlayerLeft;
+
+        Logger.LogInfo("[FinishAnnouncements] Shutdown!");
+    }
+
+    private void OnPlayerJoined(NetPlayer player)
+    {
+        playerTimers[player.Id] = DateTime.UtcNow; // start or restart timer
+    }
+
+    private void OnPlayerLeft(NetPlayer player)
+    {
+        playerTimers.Remove(player.Id);
+    }
+
+    private async Task CheckHeightLoopAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                foreach (var player in GameServer.Instance.Players.Values)
+                {
+                    if (playerTimers.TryGetValue(player.Id, out var startTime))
+                    {
+                        float height = player.Movement.Position.y;
+                        if (height >= 472f)
+                        {
+                            TimeSpan duration = DateTime.UtcNow - startTime;
+                            string formattedTime = FormatTimeSpan(duration);
+
+                            GameServer.Instance.BroadcastChatMessage($"{player.Name} beat the game in ~{formattedTime}!", UnityEngine.Color.cyan);
+                            playerTimers.Remove(player.Id); // prevent spamming
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"[FinishAnnouncements] Error during height check: {ex}");
+            }
+
+            await Task.Delay(50, token); // check height every 50 ms
+        }
+    }
+
+    private string FormatTimeSpan(TimeSpan timespan)
+    {
+        if (timespan.TotalHours >= 1)
+            return $"{(int)timespan.TotalHours:D2}:{timespan.Minutes:D2}:{timespan.Seconds:D2}";
+
+        return $"{timespan.Minutes:D2}:{timespan.Seconds:D2}";
+    }
+
+    private async Task CheckForNewerVersionAsync()
+    {
+        try
+        {
+            using var http = new HttpClient();
+            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/FinishAnnouncements/FinishAnnouncements.cs");
+
+            var versionMatch = Regex.Match(
+                fileContent,
+                @"public\s+string\s+Version\s*=>\s*""([^""]+)"""
+            );
+
+            if (versionMatch.Success)
+            {
+                var remoteVersionStr = versionMatch.Groups[1].Value;
+                var localVersionStr = Version;
+
+                if (System.Version.TryParse(remoteVersionStr, out var remoteVersion) &&
+                    System.Version.TryParse(localVersionStr, out var localVersion))
+                {
+                    if (remoteVersion > localVersion)
+                    {
+                        Logger.LogCustom($"[FinishAnnouncements] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[FinishAnnouncements] Error checking for new version: {ex}");
+        }
+    }
+}
