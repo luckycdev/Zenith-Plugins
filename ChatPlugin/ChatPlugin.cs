@@ -11,6 +11,8 @@ using System;
 
 public class ChatConfig
 {
+    public string BannedWords { get; set; } = "badword1,bad word 2,badword 3";
+    public bool? BannedWordsStrictMode { get; set; } = true;
     public bool? RankPrefixes { get; set; } = true;
     public string AdminPrefix { get; set; } = "[Admin]";
     public string ModPrefix { get; set; } = "[Mod]";
@@ -31,7 +33,7 @@ public class ChatPlugin : IPlugin
 {
     public string Name => "ChatPlugin";
 
-    public string Version => "0.1";
+    public string Version => "0.2";
 
     public string Author => "luckycdev";
 
@@ -64,10 +66,50 @@ public class ChatPlugin : IPlugin
         Logger.LogInfo("[ChatPlugin] Shutdown!");
     }
 
+    private string ContainsBannedWord(string message)
+    {
+        if (string.IsNullOrWhiteSpace(config.BannedWords))
+            return null;
+
+        string[] bannedWords = config.BannedWords.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        string lowerMessage = message.ToLowerInvariant();
+
+        foreach (string phrase in bannedWords)
+        {
+            string bannedWord = phrase.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(bannedWord))
+                continue;
+
+            if (config.BannedWordsStrictMode == true)
+            {
+                if (lowerMessage.Contains(bannedWord))
+                    return bannedWord;
+            }
+            else
+            {
+                string pattern = Regex.Replace(Regex.Escape(bannedWord), @"\\\s+", @"\s+");
+                string fullPattern = $@"(?<=^|\s|[.,!?;:]){pattern}(?=$|\s|[.,!?;:])";
+
+                if (Regex.IsMatch(message, fullPattern, RegexOptions.IgnoreCase))
+                    return bannedWord;
+            }
+        }
+
+        return null;
+    }
+
     public void ModifyMessages()
     {
         GameServer.Instance.OnChatMessageModify += (sender, playerName, message, color) =>
         {
+            string bannedWord = ContainsBannedWord(message);
+            if (bannedWord != null)
+            {
+                Logger.LogCustom($"[ChatPlugin] Blocked message from {playerName} for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
+                sender.SendChatMessage("Message blocked due to it containing a banned word.", new UnityEngine.Color(1f, 0f, 0f));
+                return default; // stop the message from sending
+            }
+
             if (config.RankPrefixes == true && config.RankColors == true)
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
@@ -157,7 +199,17 @@ public class ChatPlugin : IPlugin
             admin_rgb_b = config.Admin_Color_B.GetValueOrDefault() / 255f;
 
 
+            if (config.BannedWords == "badword1,bad word 2,badword 3")
+                Logger.LogWarning($"[ChatPlugin] BannedWords in {configFilePath} is default!");
+
             // check if null
+            if (config.BannedWords == null)
+                Logger.LogError($"[ChatPlugin] BannedWords in {configFilePath} is invalid!");
+
+            if (!config.BannedWordsStrictMode.HasValue)
+                Logger.LogError($"[ChatPlugin] BannedWordsStrictMode in {configFilePath} is invalid!");
+
+
             if (!config.RankPrefixes.HasValue)
                 Logger.LogError($"[ChatPlugin] RankPrefixes option in {configFilePath} is null");
 
@@ -166,7 +218,7 @@ public class ChatPlugin : IPlugin
 
 
             if (config.RankPrefixes == true && config.PlayerPrefix == null)
-                Logger.LogError($"[ChatPlugin] Player Prefix in {configFilePath} is invalid!");
+                Logger.LogError($"[ChatPlugin] PlayerPrefix in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Player_Color_R == null || config.Player_Color_R > 255 || config.Player_Color_R < 0))
                 Logger.LogError($"[ChatPlugin] Player_Color_R in {configFilePath} is invalid!");
@@ -179,7 +231,7 @@ public class ChatPlugin : IPlugin
 
 
             if (config.RankPrefixes == true && config.ModPrefix == null)
-                Logger.LogError($"[ChatPlugin] Mod Prefix in {configFilePath} is invalid!");
+                Logger.LogError($"[ChatPlugin] ModPrefix in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Mod_Color_R == null || config.Mod_Color_R > 255 || config.Mod_Color_R < 0))
                 Logger.LogError($"[ChatPlugin] Mod_Color_R in {configFilePath} is invalid!");
@@ -192,7 +244,7 @@ public class ChatPlugin : IPlugin
 
 
             if (config.RankPrefixes == true && config.AdminPrefix == null)
-                Logger.LogError($"[ChatPlugin] Admin Prefix in {configFilePath} is invalid!");
+                Logger.LogError($"[ChatPlugin] AdminPrefix in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Admin_Color_R == null || config.Admin_Color_R > 255 || config.Admin_Color_R < 0))
                 Logger.LogError($"[ChatPlugin] Admin_Color_R in {configFilePath} is invalid!");
