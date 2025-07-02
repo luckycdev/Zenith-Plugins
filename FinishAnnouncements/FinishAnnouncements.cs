@@ -5,23 +5,45 @@ using ServerShared;
 using ServerShared.Player;
 using ServerShared.Plugins;
 using ServerShared.Logging;
-
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Reflection;
+using System.IO;
+using System.Text.Json;
+
+public class FinishAnnouncementsConfig
+{
+    public string Message { get; set; } = "{player} beat the game in ~{time}!";
+    public int? Color_R { get; set; } = 0;
+    public int? Color_G { get; set; } = 255;
+    public int? Color_B { get; set; } = 255;
+}
+
 public class FinishAnnouncements : IPlugin
 {
     public string Name => "FinishAnnouncements";
 
-    public string Version => "1.0";
+    public string Version => "1.1";
 
     public string Author => "luckycdev";
+
+    private string configFilePath;
+    private FinishAnnouncementsConfig config;
 
     private Dictionary<int, DateTime> playerTimers = new();
     private CancellationTokenSource cancellation;
 
+    private string message;
+
+    private float rgb_r;
+    private float rgb_g;
+    private float rgb_b;
+
     public void Initialize()
     {
+        LoadOrCreateConfig();
+
         GameServer.Instance.OnPlayerJoined += OnPlayerJoined;
         GameServer.Instance.OnPlayerLeft += OnPlayerLeft;
 
@@ -69,8 +91,8 @@ public class FinishAnnouncements : IPlugin
                         {
                             TimeSpan duration = DateTime.UtcNow - startTime;
                             string formattedTime = FormatTimeSpan(duration);
-
-                            GameServer.Instance.BroadcastChatMessage($"{player.Name} beat the game in ~{formattedTime}!", UnityEngine.Color.cyan);
+                            message = config.Message.Replace("{player}", player.Name).Replace("{time}", formattedTime);
+                            GameServer.Instance.BroadcastChatMessage($"{message}", new UnityEngine.Color(rgb_r, rgb_g, rgb_b));
                             playerTimers.Remove(player.Id); // prevent spamming
                         }
                     }
@@ -91,6 +113,50 @@ public class FinishAnnouncements : IPlugin
             return $"{(int)timespan.TotalHours:D2}:{timespan.Minutes:D2}:{timespan.Seconds:D2}";
 
         return $"{timespan.Minutes:D2}:{timespan.Seconds:D2}";
+    }
+
+    private void LoadOrCreateConfig()
+    {
+        string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        configFilePath = Path.Combine(pluginFolder, "config.json");
+
+        if (!File.Exists(configFilePath))
+        {
+            config = new FinishAnnouncementsConfig();
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.Serialize(config, options);
+            File.WriteAllText(configFilePath, json);
+
+            rgb_r = config.Color_R.GetValueOrDefault() / 255f;
+            rgb_g = config.Color_G.GetValueOrDefault() / 255f;
+            rgb_b = config.Color_B.GetValueOrDefault() / 255f;
+
+            Logger.LogDebug($"[FinishAnnouncements] Config file created: {configFilePath}");
+
+            Logger.LogWarning($"[FinishAnnouncements] Please update {configFilePath} with your finish announcement message and message color!");
+        }
+        else
+        {
+            var json = File.ReadAllText(configFilePath);
+            config = JsonSerializer.Deserialize<FinishAnnouncementsConfig>(json);
+
+            rgb_r = config.Color_R.GetValueOrDefault() / 255f;
+            rgb_g = config.Color_G.GetValueOrDefault() / 255f;
+            rgb_b = config.Color_B.GetValueOrDefault() / 255f;
+
+            // check if null or not rgb
+            if (string.IsNullOrWhiteSpace(config.Message))
+                Logger.LogError($"[FinishAnnouncements] Message in {configFilePath} is invalid!");
+
+            if (config.Color_R == null || config.Color_R > 255 || config.Color_R < 0)
+                Logger.LogError($"[FinishAnnouncements] Color_R in {configFilePath} is invalid!");
+
+            if (config.Color_G == null || config.Color_G > 255 || config.Color_G < 0)
+                Logger.LogError($"[FinishAnnouncements] Color_G in {configFilePath} is invalid!");
+
+            if (config.Color_B == null || config.Color_B > 255 || config.Color_B < 0)
+                Logger.LogError($"[FinishAnnouncements] Color_B in {configFilePath} is invalid!");
+        }
     }
 
     private async Task CheckForNewerVersionAsync()
