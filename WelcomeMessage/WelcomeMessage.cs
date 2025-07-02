@@ -24,7 +24,7 @@ public class WelcomeMessage : IPlugin
 {
     public string Name => "WelcomeMessage";
 
-    public string Version => "1.1.1";
+    public string Version => "1.2";
 
     public string Author => "luckycdev";
 
@@ -54,6 +54,7 @@ public class WelcomeMessage : IPlugin
         if (!commandsRegistered)
         {
             GameServer.Instance.ChatCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
+            Logger.LogInfo($"[WelcomeMessage] Players can now toggle the welcome message using /togglewelcomemessage");
             commandsRegistered = true;
         }
 
@@ -93,6 +94,12 @@ public class WelcomeMessage : IPlugin
             var json = JsonSerializer.Serialize(config, options);
             File.WriteAllText(configFilePath, json);
 
+            rgb_r = config.Color_R.GetValueOrDefault() / 255f;
+            rgb_g = config.Color_G.GetValueOrDefault() / 255f;
+            rgb_b = config.Color_B.GetValueOrDefault() / 255f;
+
+            message = config.Message.Replace("{server}", GameServer.Instance.Name);
+
             Logger.LogDebug($"[WelcomeMessage] Config file created: {configFilePath}");
 
             Logger.LogWarning($"[WelcomeMessage] Please update {configFilePath} with your welcome message and message color!");
@@ -108,18 +115,9 @@ public class WelcomeMessage : IPlugin
 
             message = config.Message.Replace("{server}", GameServer.Instance.Name);
 
-            // check if defaults
+            // check if default
             if (config.Message == "Welcome to {server}!")
                 Logger.LogWarning($"[WelcomeMessage] Message in {configFilePath} is default!");
-
-            if (config.Color_R == 11)
-                Logger.LogWarning($"[WelcomeMessage] Color_R in {configFilePath} is default!");
-
-            if (config.Color_G == 218)
-                Logger.LogWarning($"[WelcomeMessage] Color_G in {configFilePath} is default!");
-
-            if (config.Color_B == 81)
-                Logger.LogWarning($"[WelcomeMessage] Color_B in {configFilePath} is default!");
 
             // check if null or not rgb
             if (string.IsNullOrWhiteSpace(config.Message))
@@ -148,7 +146,6 @@ public class WelcomeMessage : IPlugin
             File.WriteAllText(toggledListFilePath, json);
 
             Logger.LogDebug($"[WelcomeMessage] Toggled players list file created: {toggledListFilePath}");
-            Logger.LogWarning($"[WelcomeMessage] Players can now toggle the welcome message using /togglewelcome");
         }
         else
         {
@@ -197,8 +194,8 @@ public class WelcomeMessage : IPlugin
     }
 }
 
-[Command("Toggle welcome message", "togglewelcome", "Toggles the welcome message on or off based on your IP.")]
-public class ToggleWelcomeCommand : ChatCommand
+[Command("Toggle welcome message", "togglewelcomemessage", "Toggles the welcome message on or off based on your IP.")]
+public class ToggleWelcomeMessageCommand : ChatCommand
 {
     public override void Handle(string[] args)
     {
