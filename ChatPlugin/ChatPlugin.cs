@@ -13,6 +13,14 @@ public class ChatConfig
 {
     public string BannedWords { get; set; } = "badword1,bad word 2,badword 3";
     public bool? BannedWordsStrictMode { get; set; } = true;
+    public string? JoinMessage { get; set; } = "{player} joined";
+    public int? JoinMessage_Color_R { get; set; } = 230;
+    public int? JoinMessage_Color_G { get; set; } = 241;
+    public int? JoinMessage_Color_B { get; set; } = 146;
+    public string? LeaveMessage { get; set; } = "{player} left";
+    public int? LeaveMessage_Color_R { get; set; } = 230;
+    public int? LeaveMessage_Color_G { get; set; } = 241;
+    public int? LeaveMessage_Color_B { get; set; } = 146;
     public bool? RankPrefixes { get; set; } = true;
     public string AdminPrefix { get; set; } = "[Admin]";
     public string ModPrefix { get; set; } = "[Mod]";
@@ -33,12 +41,20 @@ public class ChatPlugin : IPlugin
 {
     public string Name => "ChatPlugin";
 
-    public string Version => "0.2";
+    public string Version => "0.3";
 
     public string Author => "luckycdev";
 
     private string configFilePath;
     private ChatConfig config;
+
+    private float joinmessage_rgb_r;
+    private float joinmessage_rgb_g;
+    private float joinmessage_rgb_b;
+
+    private float leavemessage_rgb_r;
+    private float leavemessage_rgb_g;
+    private float leavemessage_rgb_b;
 
     private float player_rgb_r;
     private float player_rgb_g;
@@ -163,6 +179,24 @@ public class ChatPlugin : IPlugin
                 return (playerName, message, color);
             }
         };
+
+        GameServer.Instance.OnJoinMessageModify += (player) =>
+        {
+            if (config.JoinMessage == null)
+                return default; // dont modify and use default server message
+
+            string msg = config.JoinMessage.Replace("{player}", player.Name);
+            return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+        };
+
+        GameServer.Instance.OnLeaveMessageModify += (player) =>
+        {
+            if (config.LeaveMessage == null)
+                return default; // dont modify and use default server message
+
+            string msg = config.LeaveMessage.Replace("{player}", player.Name);
+            return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+        };
     }
 
     private void LoadOrCreateConfig()
@@ -177,6 +211,26 @@ public class ChatPlugin : IPlugin
             var json = JsonSerializer.Serialize(config, options);
             File.WriteAllText(configFilePath, json);
 
+            joinmessage_rgb_r = config.JoinMessage_Color_R.GetValueOrDefault() / 255f;
+            joinmessage_rgb_g = config.JoinMessage_Color_G.GetValueOrDefault() / 255f;
+            joinmessage_rgb_b = config.JoinMessage_Color_B.GetValueOrDefault() / 255f;
+
+            leavemessage_rgb_r = config.LeaveMessage_Color_R.GetValueOrDefault() / 255f;
+            leavemessage_rgb_g = config.LeaveMessage_Color_G.GetValueOrDefault() / 255f;
+            leavemessage_rgb_b = config.LeaveMessage_Color_B.GetValueOrDefault() / 255f;
+
+            player_rgb_r = config.Player_Color_R.GetValueOrDefault() / 255f;
+            player_rgb_g = config.Player_Color_G.GetValueOrDefault() / 255f;
+            player_rgb_b = config.Player_Color_B.GetValueOrDefault() / 255f;
+
+            mod_rgb_r = config.Mod_Color_R.GetValueOrDefault() / 255f;
+            mod_rgb_g = config.Mod_Color_G.GetValueOrDefault() / 255f;
+            mod_rgb_b = config.Mod_Color_B.GetValueOrDefault() / 255f;
+
+            admin_rgb_r = config.Admin_Color_R.GetValueOrDefault() / 255f;
+            admin_rgb_g = config.Admin_Color_G.GetValueOrDefault() / 255f;
+            admin_rgb_b = config.Admin_Color_B.GetValueOrDefault() / 255f;
+
             Logger.LogDebug($"[ChatPlugin] Config file created: {configFilePath}");
 
             Logger.LogWarning($"[ChatPlugin] Please see {configFilePath} to change settings!");
@@ -185,6 +239,14 @@ public class ChatPlugin : IPlugin
         {
             var json = File.ReadAllText(configFilePath);
             config = JsonSerializer.Deserialize<ChatConfig>(json);
+
+            joinmessage_rgb_r = config.JoinMessage_Color_R.GetValueOrDefault() / 255f;
+            joinmessage_rgb_g = config.JoinMessage_Color_G.GetValueOrDefault() / 255f;
+            joinmessage_rgb_b = config.JoinMessage_Color_B.GetValueOrDefault() / 255f;
+
+            leavemessage_rgb_r = config.LeaveMessage_Color_R.GetValueOrDefault() / 255f;
+            leavemessage_rgb_g = config.LeaveMessage_Color_G.GetValueOrDefault() / 255f;
+            leavemessage_rgb_b = config.LeaveMessage_Color_B.GetValueOrDefault() / 255f;
 
             player_rgb_r = config.Player_Color_R.GetValueOrDefault() / 255f;
             player_rgb_g = config.Player_Color_G.GetValueOrDefault() / 255f;
@@ -200,7 +262,7 @@ public class ChatPlugin : IPlugin
 
 
             if (config.BannedWords == "badword1,bad word 2,badword 3")
-                Logger.LogWarning($"[ChatPlugin] BannedWords in {configFilePath} is default!");
+                Logger.LogError($"[ChatPlugin] BannedWords in {configFilePath} is default! Please update it!");
 
             // check if null
             if (config.BannedWords == null)
@@ -210,11 +272,38 @@ public class ChatPlugin : IPlugin
                 Logger.LogError($"[ChatPlugin] BannedWordsStrictMode in {configFilePath} is invalid!");
 
 
+            if (config.JoinMessage == null)
+                Logger.LogError($"[ChatPlugin] JoinMessage in {configFilePath} is invalid!");
+
+            if (config.LeaveMessage == null)
+                Logger.LogError($"[ChatPlugin] LeaveMessage in {configFilePath} is invalid!");
+
+
             if (!config.RankPrefixes.HasValue)
                 Logger.LogError($"[ChatPlugin] RankPrefixes option in {configFilePath} is null");
 
             if (!config.RankColors.HasValue)
                 Logger.LogError($"[ChatPlugin] RankColors option in {configFilePath} is null");
+
+
+            if (config.JoinMessage_Color_R == null || config.JoinMessage_Color_R > 255 || config.JoinMessage_Color_R < 0)
+                Logger.LogError($"[ChatPlugin] JoinMessage_Color_R in {configFilePath} is invalid!");
+
+            if (config.JoinMessage_Color_G == null || config.JoinMessage_Color_G > 255 || config.JoinMessage_Color_G < 0)
+                Logger.LogError($"[ChatPlugin] JoinMessage_Color_G in {configFilePath} is invalid!");
+
+            if (config.JoinMessage_Color_B == null || config.JoinMessage_Color_B > 255 || config.JoinMessage_Color_B < 0)
+                Logger.LogError($"[ChatPlugin] JoinMessage_Color_B in {configFilePath} is invalid!");
+
+
+            if (config.LeaveMessage_Color_R == null || config.LeaveMessage_Color_R > 255 || config.LeaveMessage_Color_R < 0)
+                Logger.LogError($"[ChatPlugin] LeaveMessage_Color_R in {configFilePath} is invalid!");
+
+            if (config.LeaveMessage_Color_G == null || config.LeaveMessage_Color_G > 255 || config.LeaveMessage_Color_G < 0)
+                Logger.LogError($"[ChatPlugin] LeaveMessage_Color_G in {configFilePath} is invalid!");
+
+            if (config.LeaveMessage_Color_B == null || config.LeaveMessage_Color_B > 255 || config.LeaveMessage_Color_B < 0)
+                Logger.LogError($"[ChatPlugin] LeaveMessage_Color_B in {configFilePath} is invalid!");
 
 
             if (config.RankPrefixes == true && config.PlayerPrefix == null)
