@@ -37,7 +37,7 @@ public class GOICord : IPlugin
 
     public string Name => "GOICord";
 
-    public string Version => "0.7";
+    public string Version => "0.8";
 
     public string Author => "luckycdev";
 
@@ -69,8 +69,8 @@ public class GOICord : IPlugin
 
         if (config.JoinLeaveMessages == true)
         {
-            GameServer.Instance.OnPlayerJoined += OnPlayerJoined;
-            GameServer.Instance.OnPlayerLeft += OnPlayerLeft;
+            GameServer.Instance.OnJoinMessageFinal += OnJoinMessageFinal;
+            GameServer.Instance.OnLeaveMessageFinal += OnLeaveMessageFinal;
         }
 
         // discord to chat
@@ -99,8 +99,8 @@ public class GOICord : IPlugin
 
         if (config.JoinLeaveMessages == true)
         {
-            GameServer.Instance.OnPlayerJoined -= OnPlayerJoined;
-            GameServer.Instance.OnPlayerLeft -= OnPlayerLeft;
+            GameServer.Instance.OnJoinMessageFinal -= OnJoinMessageFinal;
+            GameServer.Instance.OnLeaveMessageFinal -= OnLeaveMessageFinal;
         }
 
         if (discordClient != null)
@@ -280,16 +280,16 @@ public class GOICord : IPlugin
         return Task.CompletedTask;
     }
 
-    private void OnPlayerJoined(NetPlayer player)
+    private void OnJoinMessageFinal(string message, UnityEngine.Color color)
     {
         if (discordChannel != null)
-            _ = discordChannel.SendMessageAsync($"**{player.Name} joined the server.**");
+            _ = discordChannel.SendMessageAsync($"**{message}**");
     }
 
-    private void OnPlayerLeft(NetPlayer player)
+    private void OnLeaveMessageFinal(string message, UnityEngine.Color color)
     {
         if (discordChannel != null)
-            _ = discordChannel.SendMessageAsync($"**{player.Name} left the server.**");
+            _ = discordChannel.SendMessageAsync($"**{message}**");
     }
 
     private string ConvertDiscordMessage(string content)
