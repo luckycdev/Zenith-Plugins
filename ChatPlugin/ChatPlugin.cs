@@ -13,17 +13,17 @@ public class ChatConfig
 {
     public string BannedWords { get; set; } = "badword1,bad word 2,badword 3";
     public bool? BannedWordsStrictMode { get; set; } = true;
-    public string? JoinMessage { get; set; } = "{player} joined";
+    public string JoinMessage { get; set; } = "{player} joined the server";
     public int? JoinMessage_Color_R { get; set; } = 230;
     public int? JoinMessage_Color_G { get; set; } = 241;
     public int? JoinMessage_Color_B { get; set; } = 146;
-    public string? LeaveMessage { get; set; } = "{player} left";
+    public string LeaveMessage { get; set; } = "{player} left the server";
     public int? LeaveMessage_Color_R { get; set; } = 230;
     public int? LeaveMessage_Color_G { get; set; } = 241;
     public int? LeaveMessage_Color_B { get; set; } = 146;
     public bool? RankPrefixes { get; set; } = true;
-    public string AdminPrefix { get; set; } = "[Admin]";
-    public string ModPrefix { get; set; } = "[Mod]";
+    public string AdminPrefix { get; set; } = "[Admin] ";
+    public string ModPrefix { get; set; } = "[Mod] ";
     public string PlayerPrefix { get; set; } = "";
     public bool? RankColors { get; set; } = true;
     public int? Player_Color_R { get; set; } = 255;
@@ -41,7 +41,7 @@ public class ChatPlugin : IPlugin
 {
     public string Name => "ChatPlugin";
 
-    public string Version => "0.3";
+    public string Version => "0.3.1";
 
     public string Author => "luckycdev";
 
@@ -129,26 +129,26 @@ public class ChatPlugin : IPlugin
             if (config.RankPrefixes == true && config.RankColors == true)
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{config.PlayerPrefix} {playerName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
+                    return ($"{config.PlayerPrefix}{playerName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
 
                 if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{config.ModPrefix} {playerName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
+                    return ($"{config.ModPrefix}{playerName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
 
                 if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{config.AdminPrefix} {playerName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
+                    return ($"{config.AdminPrefix}{playerName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
 
                 return (playerName, message, color);
             }
             else if (config.RankPrefixes == true && config.RankColors == false)
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{config.PlayerPrefix} {playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{config.PlayerPrefix}{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{config.ModPrefix} {playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{config.ModPrefix}{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{config.AdminPrefix} {playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{config.AdminPrefix}{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 return (playerName, message, color);
             }
@@ -186,6 +186,16 @@ public class ChatPlugin : IPlugin
                 return default; // dont modify and use default server message
 
             string msg = config.JoinMessage.Replace("{player}", player.Name);
+
+            if (player != null && (int)player.AccessLevel == 0)
+                return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+
+            if (player != null && (int)player.AccessLevel == 1)
+                return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+
+            if (player != null && (int)player.AccessLevel == 2)
+                return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+
             return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
         };
 
@@ -195,6 +205,16 @@ public class ChatPlugin : IPlugin
                 return default; // dont modify and use default server message
 
             string msg = config.LeaveMessage.Replace("{player}", player.Name);
+
+            if (player != null && (int)player.AccessLevel == 0)
+                return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+
+            if (player != null && (int)player.AccessLevel == 1)
+                return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+
+            if (player != null && (int)player.AccessLevel == 2)
+                return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+
             return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
         };
     }
