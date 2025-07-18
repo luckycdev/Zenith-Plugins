@@ -37,11 +37,11 @@ public class ChatConfig
     public int? Admin_Color_B { get; set; } = 128;
 }
 
-public class ChatPlugin : IPlugin
+public class ChatManager: IPlugin
 {
-    public string Name => "ChatPlugin";
+    public string Name => "ChatManager";
 
-    public string Version => "0.3.1";
+    public string Version => "0.3.2";
 
     public string Author => "luckycdev";
 
@@ -71,7 +71,7 @@ public class ChatPlugin : IPlugin
     public void Initialize()
     {
         LoadOrCreateConfig();
-        Logger.LogInfo("[ChatPlugin] Initialized!");
+        Logger.LogInfo($"[{Name}] Initialized!");
         ModifyMessages();
 
         _ = CheckForNewerVersionAsync();
@@ -79,7 +79,7 @@ public class ChatPlugin : IPlugin
 
     public void Shutdown()
     {
-        Logger.LogInfo("[ChatPlugin] Shutdown!");
+        Logger.LogInfo($"[{Name}] Shutdown!");
     }
 
     private string ContainsBannedWord(string message)
@@ -121,7 +121,7 @@ public class ChatPlugin : IPlugin
             string bannedWord = ContainsBannedWord(message);
             if (bannedWord != null)
             {
-                Logger.LogCustom($"[ChatPlugin] Blocked message from {playerName} for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
+                Logger.LogCustom($"[{Name}] Blocked message from {playerName} for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
                 sender.SendChatMessage("Message blocked due to it containing a banned word.", new UnityEngine.Color(1f, 0f, 0f));
                 return default; // stop the message from sending
             }
@@ -251,9 +251,9 @@ public class ChatPlugin : IPlugin
             admin_rgb_g = config.Admin_Color_G.GetValueOrDefault() / 255f;
             admin_rgb_b = config.Admin_Color_B.GetValueOrDefault() / 255f;
 
-            Logger.LogDebug($"[ChatPlugin] Config file created: {configFilePath}");
+            Logger.LogDebug($"[{Name}] Config file created: {configFilePath}");
 
-            Logger.LogWarning($"[ChatPlugin] Please see {configFilePath} to change settings!");
+            Logger.LogWarning($"[{Name}] Please see {configFilePath} to change settings!");
         }
         else
         {
@@ -282,87 +282,87 @@ public class ChatPlugin : IPlugin
 
 
             if (config.BannedWords == "badword1,bad word 2,badword 3")
-                Logger.LogError($"[ChatPlugin] BannedWords in {configFilePath} is default! Please update it!");
+                Logger.LogError($"[{Name}] BannedWords in {configFilePath} is default! Please update it!");
 
             // check if null
             if (config.BannedWords == null)
-                Logger.LogError($"[ChatPlugin] BannedWords in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] BannedWords in {configFilePath} is invalid!");
 
             if (!config.BannedWordsStrictMode.HasValue)
-                Logger.LogError($"[ChatPlugin] BannedWordsStrictMode in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] BannedWordsStrictMode in {configFilePath} is invalid!");
 
 
             if (config.JoinMessage == null)
-                Logger.LogError($"[ChatPlugin] JoinMessage in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] JoinMessage in {configFilePath} is invalid!");
 
             if (config.LeaveMessage == null)
-                Logger.LogError($"[ChatPlugin] LeaveMessage in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] LeaveMessage in {configFilePath} is invalid!");
 
 
             if (!config.RankPrefixes.HasValue)
-                Logger.LogError($"[ChatPlugin] RankPrefixes option in {configFilePath} is null");
+                Logger.LogError($"[{Name}] RankPrefixes option in {configFilePath} is null");
 
             if (!config.RankColors.HasValue)
-                Logger.LogError($"[ChatPlugin] RankColors option in {configFilePath} is null");
+                Logger.LogError($"[{Name}] RankColors option in {configFilePath} is null");
 
 
             if (config.JoinMessage_Color_R == null || config.JoinMessage_Color_R > 255 || config.JoinMessage_Color_R < 0)
-                Logger.LogError($"[ChatPlugin] JoinMessage_Color_R in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] JoinMessage_Color_R in {configFilePath} is invalid!");
 
             if (config.JoinMessage_Color_G == null || config.JoinMessage_Color_G > 255 || config.JoinMessage_Color_G < 0)
-                Logger.LogError($"[ChatPlugin] JoinMessage_Color_G in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] JoinMessage_Color_G in {configFilePath} is invalid!");
 
             if (config.JoinMessage_Color_B == null || config.JoinMessage_Color_B > 255 || config.JoinMessage_Color_B < 0)
-                Logger.LogError($"[ChatPlugin] JoinMessage_Color_B in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] JoinMessage_Color_B in {configFilePath} is invalid!");
 
 
             if (config.LeaveMessage_Color_R == null || config.LeaveMessage_Color_R > 255 || config.LeaveMessage_Color_R < 0)
-                Logger.LogError($"[ChatPlugin] LeaveMessage_Color_R in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] LeaveMessage_Color_R in {configFilePath} is invalid!");
 
             if (config.LeaveMessage_Color_G == null || config.LeaveMessage_Color_G > 255 || config.LeaveMessage_Color_G < 0)
-                Logger.LogError($"[ChatPlugin] LeaveMessage_Color_G in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] LeaveMessage_Color_G in {configFilePath} is invalid!");
 
             if (config.LeaveMessage_Color_B == null || config.LeaveMessage_Color_B > 255 || config.LeaveMessage_Color_B < 0)
-                Logger.LogError($"[ChatPlugin] LeaveMessage_Color_B in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] LeaveMessage_Color_B in {configFilePath} is invalid!");
 
 
             if (config.RankPrefixes == true && config.PlayerPrefix == null)
-                Logger.LogError($"[ChatPlugin] PlayerPrefix in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] PlayerPrefix in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Player_Color_R == null || config.Player_Color_R > 255 || config.Player_Color_R < 0))
-                Logger.LogError($"[ChatPlugin] Player_Color_R in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Player_Color_R in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Player_Color_G == null || config.Player_Color_G > 255 || config.Player_Color_G < 0))
-                Logger.LogError($"[ChatPlugin] Player_Color_G in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Player_Color_G in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Player_Color_B == null || config.Player_Color_B > 255 || config.Player_Color_B < 0))
-                Logger.LogError($"[ChatPlugin] Player_Color_B in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Player_Color_B in {configFilePath} is invalid!");
 
 
             if (config.RankPrefixes == true && config.ModPrefix == null)
-                Logger.LogError($"[ChatPlugin] ModPrefix in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] ModPrefix in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Mod_Color_R == null || config.Mod_Color_R > 255 || config.Mod_Color_R < 0))
-                Logger.LogError($"[ChatPlugin] Mod_Color_R in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Mod_Color_R in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Mod_Color_G == null || config.Mod_Color_G > 255 || config.Mod_Color_G < 0))
-                Logger.LogError($"[ChatPlugin] Mod_Color_G in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Mod_Color_G in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Mod_Color_B == null || config.Mod_Color_B > 255 || config.Mod_Color_B < 0))
-                Logger.LogError($"[ChatPlugin] Mod_Color_B in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Mod_Color_B in {configFilePath} is invalid!");
 
 
             if (config.RankPrefixes == true && config.AdminPrefix == null)
-                Logger.LogError($"[ChatPlugin] AdminPrefix in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] AdminPrefix in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Admin_Color_R == null || config.Admin_Color_R > 255 || config.Admin_Color_R < 0))
-                Logger.LogError($"[ChatPlugin] Admin_Color_R in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Admin_Color_R in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Admin_Color_G == null || config.Admin_Color_G > 255 || config.Admin_Color_G < 0))
-                Logger.LogError($"[ChatPlugin] Admin_Color_G in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Admin_Color_G in {configFilePath} is invalid!");
 
             if (config.RankColors == true && (config.Admin_Color_B == null || config.Admin_Color_B > 255 || config.Admin_Color_B < 0))
-                Logger.LogError($"[ChatPlugin] Admin_Color_B in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Admin_Color_B in {configFilePath} is invalid!");
         }
     }
 
@@ -371,7 +371,7 @@ public class ChatPlugin : IPlugin
         try
         {
             using var http = new HttpClient();
-            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/ChatPlugin/ChatPlugin.cs");
+            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/ChatManager/ChatManager.cs");
 
             var versionMatch = Regex.Match(
                 fileContent,
@@ -389,7 +389,7 @@ public class ChatPlugin : IPlugin
                     if (remoteVersion > localVersion)
                     {
                         Logger.LogWarning(
-                            $"[ChatPlugin] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}"
+                            $"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}"
                         );
                     }
                 }
@@ -397,7 +397,7 @@ public class ChatPlugin : IPlugin
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[ChatPlugin] Error checking for new version: {ex}");
+            Logger.LogError($"[{Name}] Error checking for new version: {ex}");
         }
     }
 }

@@ -11,7 +11,7 @@ public class AntiDuplicatePlayers : IPlugin
 {
     public string Name => "AntiDuplicatePlayers";
 
-    public string Version => "1.0";
+    public string Version => "1.0.1";
 
     public string Author => "luckycdev";
 
@@ -19,7 +19,7 @@ public class AntiDuplicatePlayers : IPlugin
     {
         GameServer.Instance.OnPlayerJoined += OnPlayerJoined;
 
-        Logger.LogInfo("[AntiDuplicatePlayers] Initialized!");
+        Logger.LogInfo($"[{Name}] Initialized!");
 
         _ = CheckForNewerVersionAsync();
     }
@@ -28,7 +28,7 @@ public class AntiDuplicatePlayers : IPlugin
     {
         GameServer.Instance.OnPlayerJoined -= OnPlayerJoined;
 
-        Logger.LogInfo("[AntiDuplicatePlayers] Shutdown!");
+        Logger.LogInfo($"[{Name}] Shutdown!");
     }
 
     private async void OnPlayerJoined(NetPlayer player)
@@ -51,12 +51,12 @@ public class AntiDuplicatePlayers : IPlugin
             {
                 if (otherPlayer.Id < player.Id) // kick the older player
                 {
-                    Logger.LogCustom($"[AntiDuplicatePlayers] Kicking old duplicate '{otherPlayer.Name}' ({otherIP}), keeping newer player.", ConsoleColor.DarkRed);
+                    Logger.LogCustom($"[{Name}] Kicking old duplicate '{otherPlayer.Name}' ({otherIP}), keeping newer player.", ConsoleColor.DarkRed);
                     otherConnection.Disconnect("Duplicate session detected, newer session connected.");
                 }
                 else
                 {
-                    Logger.LogCustom($"[AntiDuplicatePlayers] Kicking new duplicate '{player.Name}' ({playerIP}), keeping older player.", ConsoleColor.DarkRed);
+                    Logger.LogCustom($"[{Name}] Kicking new duplicate '{player.Name}' ({playerIP}), keeping older player.", ConsoleColor.DarkRed);
                     player.Peer.Disconnect("Duplicate session detected, please wait before reconnecting.");
                 }
                 return;
@@ -86,14 +86,14 @@ public class AntiDuplicatePlayers : IPlugin
                 {
                     if (remoteVersion > localVersion)
                     {
-                        Logger.LogCustom($"[AntiDuplicatePlayers] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
+                        Logger.LogCustom($"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[AntiDuplicatePlayers] Error checking for new version: {ex}");
+            Logger.LogError($"[{Name}] Error checking for new version: {ex}");
         }
     }
 }

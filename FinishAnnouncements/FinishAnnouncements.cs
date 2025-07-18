@@ -24,7 +24,7 @@ public class FinishAnnouncements : IPlugin
 {
     public string Name => "FinishAnnouncements";
 
-    public string Version => "1.1";
+    public string Version => "1.1.1";
 
     public string Author => "luckycdev";
 
@@ -49,7 +49,7 @@ public class FinishAnnouncements : IPlugin
 
         cancellation = new CancellationTokenSource();
 
-        Logger.LogInfo("[FinishAnnouncements] Initialized!");
+        Logger.LogInfo($"[{Name}] Initialized!");
 
         _ = CheckForNewerVersionAsync();
 
@@ -63,7 +63,7 @@ public class FinishAnnouncements : IPlugin
         GameServer.Instance.OnPlayerJoined -= OnPlayerJoined;
         GameServer.Instance.OnPlayerLeft -= OnPlayerLeft;
 
-        Logger.LogInfo("[FinishAnnouncements] Shutdown!");
+        Logger.LogInfo($"[{Name}] Shutdown!");
     }
 
     private void OnPlayerJoined(NetPlayer player)
@@ -100,7 +100,7 @@ public class FinishAnnouncements : IPlugin
             }
             catch (Exception ex)
             {
-                Logger.LogError($"[FinishAnnouncements] Error during height check: {ex}");
+                Logger.LogError($"[{Name}] Error during height check: {ex}");
             }
 
             await Task.Delay(50, token); // check height every 50 ms
@@ -131,9 +131,9 @@ public class FinishAnnouncements : IPlugin
             rgb_g = config.Color_G.GetValueOrDefault() / 255f;
             rgb_b = config.Color_B.GetValueOrDefault() / 255f;
 
-            Logger.LogDebug($"[FinishAnnouncements] Config file created: {configFilePath}");
+            Logger.LogDebug($"[{Name}] Config file created: {configFilePath}");
 
-            Logger.LogWarning($"[FinishAnnouncements] Please update {configFilePath} with your finish announcement message and message color!");
+            Logger.LogWarning($"[{Name}] Please update {configFilePath} with your finish announcement message and message color!");
         }
         else
         {
@@ -146,16 +146,16 @@ public class FinishAnnouncements : IPlugin
 
             // check if null or not rgb
             if (string.IsNullOrWhiteSpace(config.Message))
-                Logger.LogError($"[FinishAnnouncements] Message in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Message in {configFilePath} is invalid!");
 
             if (config.Color_R == null || config.Color_R > 255 || config.Color_R < 0)
-                Logger.LogError($"[FinishAnnouncements] Color_R in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Color_R in {configFilePath} is invalid!");
 
             if (config.Color_G == null || config.Color_G > 255 || config.Color_G < 0)
-                Logger.LogError($"[FinishAnnouncements] Color_G in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Color_G in {configFilePath} is invalid!");
 
             if (config.Color_B == null || config.Color_B > 255 || config.Color_B < 0)
-                Logger.LogError($"[FinishAnnouncements] Color_B in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] Color_B in {configFilePath} is invalid!");
         }
     }
 
@@ -181,14 +181,14 @@ public class FinishAnnouncements : IPlugin
                 {
                     if (remoteVersion > localVersion)
                     {
-                        Logger.LogCustom($"[FinishAnnouncements] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
+                        Logger.LogCustom($"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[FinishAnnouncements] Error checking for new version: {ex}");
+            Logger.LogError($"[{Name}] Error checking for new version: {ex}");
         }
     }
 }

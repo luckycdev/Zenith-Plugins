@@ -24,7 +24,7 @@ public class ChatAlerts : IPlugin
 {
     public string Name => "ChatAlerts";
 
-    public string Version => "1.3";
+    public string Version => "1.3.1";
 
     public string Author => "luckycdev";
 
@@ -105,7 +105,7 @@ public class ChatAlerts : IPlugin
         try
         {
             using var http = new HttpClient();
-            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/Alert/Alert.cs");
+            var fileContent = await http.GetStringAsync("https://raw.githubusercontent.com/luckycdev/Zenith-Plugins/main/ChatAlerts/ChatAlerts.cs");
 
             var versionMatch = Regex.Match(
                 fileContent,

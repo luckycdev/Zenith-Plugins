@@ -9,20 +9,20 @@ public class TestPlugin : IPlugin
 {
     public string Name => "TestPlugin";
 
-    public string Version => "1.1";
+    public string Version => "1.1.1";
 
     public string Author => "luckycdev";
 
     public void Initialize()
     {
-        Logger.LogInfo("[TestPlugin] Initialized!");
+        Logger.LogInfo($"[{Name}] Initialized!");
 
         _ = CheckForNewerVersionAsync();
     }
 
     public void Shutdown()
     {
-        Logger.LogInfo("[TestPlugin] Shutdown!");
+        Logger.LogInfo($"[{Name}] Shutdown!");
     }
 
     private async Task CheckForNewerVersionAsync()
@@ -47,14 +47,14 @@ public class TestPlugin : IPlugin
                 {
                     if (remoteVersion > localVersion)
                     {
-                        Logger.LogCustom($"[TestPlugin] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
+                        Logger.LogCustom($"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[TestPlugin] Error checking for new version: {ex}");
+            Logger.LogError($"[{Name}] Error checking for new version: {ex}");
         }
     }
 }

@@ -7,7 +7,6 @@ using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
 using ServerShared;
-using ServerShared.Player;
 using ServerShared.Plugins;
 using ServerShared.Logging;
 using System.Net.Http;
@@ -22,6 +21,12 @@ public class BotConfig
 
 public class GOICord : IPlugin
 {
+    public string Name => "GOICord";
+
+    public string Version => "0.8.1";
+
+    public string Author => "luckycdev";
+
     private string configFilePath;
     private BotConfig config;
     private DiscordSocketClient discordClient;
@@ -34,12 +39,6 @@ public class GOICord : IPlugin
         RegexOptions.Compiled);
 
     private static readonly Regex mentionRegex = new Regex(@"<@!?(\d+)>|<@&(\d+)>|@everyone|@here", RegexOptions.Compiled); // make it so you cant ping users, roles, everyone, and here
-
-    public string Name => "GOICord";
-
-    public string Version => "0.8";
-
-    public string Author => "luckycdev";
 
     public void Initialize()
     {
@@ -54,13 +53,13 @@ public class GOICord : IPlugin
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[GOICord] Failed to initialize Discord bot: {ex.Message}");
+            Logger.LogError($"[{Name}] Failed to initialize Discord bot: {ex.Message}");
             return; // give up loading the plugin so it doesnt keep looping forever
         }
 
         if (discordClient == null || discordChannel == null) // dont let it continue trying if it isnt working
         {
-            Logger.LogError("[GOICord] Initialization aborted due to being unable to connect!");
+            Logger.LogError($"[{Name}] Initialization aborted due to being unable to connect!");
             return;
         }
 
@@ -76,7 +75,7 @@ public class GOICord : IPlugin
         // discord to chat
         discordClient.MessageReceived += OnDiscordMessageReceived;
 
-        Logger.LogInfo("[GOICord] Initialized!");
+        Logger.LogInfo($"[{Name}] Initialized!");
 
         if (config.StartStopMessages == true)
         {
@@ -109,7 +108,7 @@ public class GOICord : IPlugin
             discordClient.Dispose();
         }
 
-        Logger.LogInfo("[GOICord] Shutdown!");
+        Logger.LogInfo($"[{Name}] Shutdown!");
     }
 
     private async Task OnDiscordMessageReceived(SocketMessage message)
@@ -139,11 +138,11 @@ public class GOICord : IPlugin
                 foreach (var player in GameServer.Instance.Players.Values)
                 {
                     var safePlayerName = mentionRegex.Replace(player.Name, "[mention]");
-                    builder.AppendLine($"- {safePlayerName}");
+                    builder.AppendLine($"- {safePlayerName}"); // TODO: add wins and height, especially on updating status
                 }
             }
 
-            builder.AppendLine($"-# GOICord version {Version} on Zenith version {SharedConstants.ZenithVersion} (GOIMP version {SharedConstants.Version})");
+            builder.AppendLine($"-# {Name} version {Version} on Zenith version {SharedConstants.ZenithVersion} (GOIMP version {SharedConstants.Version})");
 
             _ = discordChannel.SendMessageAsync(builder.ToString());
             return; // dont send to game chat
@@ -182,9 +181,9 @@ public class GOICord : IPlugin
             var json = JsonSerializer.Serialize(config, options);
             File.WriteAllText(configFilePath, json);
 
-            Logger.LogDebug($"[GOICord] Config file created: {configFilePath}");
+            Logger.LogDebug($"[{Name}] Config file created: {configFilePath}");
 
-            Logger.LogError($"[GOICord] Please update {configFilePath} with your bot token and channel ID!");
+            Logger.LogError($"[{Name}] Please update {configFilePath} with your bot token and channel ID!");
         }
         else
         {
@@ -192,14 +191,14 @@ public class GOICord : IPlugin
             config = JsonSerializer.Deserialize<BotConfig>(json);
 
             if (string.IsNullOrWhiteSpace(config.BotToken) || config.BotToken == "YOUR_BOT_TOKEN_HERE")
-                Logger.LogError($"[GOICord] BotToken in {configFilePath} is not set!");
+                Logger.LogError($"[{Name}] BotToken in {configFilePath} is not set!");
 
             if (config.ChannelId == 123456789012345678)
-                Logger.LogError($"[GOICord] ChannelId in {configFilePath} is not set!");
+                Logger.LogError($"[{Name}] ChannelId in {configFilePath} is not set!");
 
             if (config.ChannelId == null)
             {
-                Logger.LogError($"[GOICord] ChannelId in {configFilePath} is invalid!");
+                Logger.LogError($"[{Name}] ChannelId in {configFilePath} is invalid!");
                 throw new Exception($"Discord channel ID '{config.ChannelId.Value}' not found! Please check {configFilePath}");
             }
         }
@@ -234,14 +233,14 @@ public class GOICord : IPlugin
         }
         catch (Exception ex) // give up to prevent looping and preventing other plugins from loading
         {
-            Logger.LogError($"[GOICord] Discord bot connection failed: {ex.Message}");
+            Logger.LogError($"[{Name}] Discord bot connection failed: {ex.Message}");
             discordClient.Dispose();
             discordClient = null;
             discordChannel = null;
             throw;
         }
 
-        Logger.LogInfo($"[GOICord] Connected to Discord channel {discordChannel.Name}");
+        Logger.LogInfo($"[{Name}] Connected to Discord channel {discordChannel.Name}");
 
         _ = Task.Run(async () =>
         {
@@ -270,13 +269,13 @@ public class GOICord : IPlugin
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[GOICord] Failed to update bot status: {ex}");
+            Logger.LogError($"[{Name}] Failed to update bot status: {ex}");
         }
     }
 
     private Task LogDiscordMessage(LogMessage msg)
     {
-        Logger.LogDebug($"[GOICord Backend] {msg.ToString()}");
+        Logger.LogDebug($"[{Name} Backend] {msg.ToString()}");
         return Task.CompletedTask;
     }
 
@@ -328,14 +327,14 @@ public class GOICord : IPlugin
                 {
                     if (remoteVersion > localVersion)
                     {
-                        Logger.LogCustom($"[GOICord] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
+                        Logger.LogCustom($"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[GOICord] Error checking for new version: {ex}");
+            Logger.LogError($"[{Name}] Error checking for new version: {ex}");
         }
     }
 }
