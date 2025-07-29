@@ -1,5 +1,6 @@
 ﻿using ServerShared.Plugins;
 using ServerShared.Logging;
+using ServerShared.Player;
 using ServerShared;
 using System.Text.Json;
 using System.Reflection;
@@ -41,7 +42,7 @@ public class ChatManager: IPlugin
 {
     public string Name => "ChatManager";
 
-    public string Version => "0.3.2";
+    public string Version => "0.4";
 
     public string Author => "luckycdev";
 
@@ -74,12 +75,16 @@ public class ChatManager: IPlugin
         Logger.LogInfo($"[{Name}] Initialized!");
         ModifyMessages();
 
+        GameServer.Instance.OnPlayerJoined += BadNameKick;
+
         _ = CheckForNewerVersionAsync();
     }
 
     public void Shutdown()
     {
         Logger.LogInfo($"[{Name}] Shutdown!");
+
+        GameServer.Instance.OnPlayerJoined -= BadNameKick;
     }
 
     private string ContainsBannedWord(string message)
@@ -114,11 +119,37 @@ public class ChatManager: IPlugin
         return null;
     }
 
+    private string NameCheck(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Unknown";
+
+        string bannedWord = ContainsBannedWord(name);
+        if (bannedWord != null)
+        {
+            Logger.LogCustom($"[{Name}] Hid player name '{name}' for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
+            return "Player";
+        }
+
+        return name;
+    }
+
+    private async void BadNameKick(NetPlayer player)
+    {
+        string bannedWord = ContainsBannedWord(player.Name);
+        if (bannedWord != null)
+        {
+            player.Peer.Disconnect("You were kicked from the server for having an innapropriate name.");
+        }
+    }
+
     public void ModifyMessages()
     {
         GameServer.Instance.OnChatMessageModify += (sender, playerName, message, color) =>
         {
+            string safeName = NameCheck(playerName);
             string bannedWord = ContainsBannedWord(message);
+
             if (bannedWord != null)
             {
                 Logger.LogCustom($"[{Name}] Blocked message from {playerName} for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
@@ -129,63 +160,65 @@ public class ChatManager: IPlugin
             if (config.RankPrefixes == true && config.RankColors == true)
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{config.PlayerPrefix}{playerName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
+                    return ($"{config.PlayerPrefix}{safeName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
 
                 if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{config.ModPrefix}{playerName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
+                    return ($"{config.ModPrefix}{safeName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
 
                 if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{config.AdminPrefix}{playerName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
+                    return ($"{config.AdminPrefix}{safeName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
 
                 return (playerName, message, color);
             }
             else if (config.RankPrefixes == true && config.RankColors == false)
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{config.PlayerPrefix}{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{config.PlayerPrefix}{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{config.ModPrefix}{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{config.ModPrefix}{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{config.AdminPrefix}{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{config.AdminPrefix}{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 return (playerName, message, color);
             }
             else if (config.RankPrefixes == false && config.RankColors == true)
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{playerName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
+                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
 
                 if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{playerName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
+                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
 
                 if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{playerName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
+                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
 
-                return (playerName, message, color);
+                return (safeName, message, color);
             }
             else // no prefix and no color
             {
                 if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
                 if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{playerName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
 
-                return (playerName, message, color);
+                return (safeName, message, color);
             }
         };
 
         GameServer.Instance.OnJoinMessageModify += (player) =>
         {
+            string safeName = NameCheck(player.Name);
+
             if (config.JoinMessage == null)
                 return default; // dont modify and use default server message
 
-            string msg = config.JoinMessage.Replace("{player}", player.Name);
+            string msg = config.JoinMessage.Replace("{player}", safeName);
 
             if (player != null && (int)player.AccessLevel == 0)
                 return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
@@ -201,10 +234,12 @@ public class ChatManager: IPlugin
 
         GameServer.Instance.OnLeaveMessageModify += (player) =>
         {
+            string safeName = NameCheck(player.Name);
+
             if (config.LeaveMessage == null)
                 return default; // dont modify and use default server message
 
-            string msg = config.LeaveMessage.Replace("{player}", player.Name);
+            string msg = config.LeaveMessage.Replace("{player}", safeName);
 
             if (player != null && (int)player.AccessLevel == 0)
                 return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
