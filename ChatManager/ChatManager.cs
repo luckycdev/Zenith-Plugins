@@ -12,12 +12,15 @@ using System;
 
 public class ChatConfig
 {
+    public bool? BanWords { get; set; } = true;
     public string BannedWords { get; set; } = "badword1,bad word 2,badword 3";
     public bool? BannedWordsStrictMode { get; set; } = true;
+    public bool? ChangeJoinMessages { get; set; } = true;
     public string JoinMessage { get; set; } = "{player} joined the server";
     public int? JoinMessage_Color_R { get; set; } = 230;
     public int? JoinMessage_Color_G { get; set; } = 241;
     public int? JoinMessage_Color_B { get; set; } = 146;
+    public bool? ChangeLeaveMessages { get; set; } = true;
     public string LeaveMessage { get; set; } = "{player} left the server";
     public int? LeaveMessage_Color_R { get; set; } = 230;
     public int? LeaveMessage_Color_G { get; set; } = 241;
@@ -42,7 +45,7 @@ public class ChatManager: IPlugin
 {
     public string Name => "ChatManager";
 
-    public string Version => "0.4";
+    public string Version => "0.4.1-beta-0.1";
 
     public string Author => "luckycdev";
 
@@ -75,7 +78,7 @@ public class ChatManager: IPlugin
         Logger.LogInfo($"[{Name}] Initialized!");
         ModifyMessages();
 
-        GameServer.Instance.OnPlayerJoined += BadNameKick;
+        GameServer.Instance.OnPlayerJoined += BadNameKick;//TODO check config or maybe do in the function
 
         _ = CheckForNewerVersionAsync();
     }
@@ -84,7 +87,7 @@ public class ChatManager: IPlugin
     {
         Logger.LogInfo($"[{Name}] Shutdown!");
 
-        GameServer.Instance.OnPlayerJoined -= BadNameKick;
+        GameServer.Instance.OnPlayerJoined -= BadNameKick;//TODO check config or maybe do in the function
     }
 
     private string ContainsBannedWord(string message)
@@ -134,23 +137,26 @@ public class ChatManager: IPlugin
         return name;
     }
 
-    private async void BadNameKick(NetPlayer player)
+    private void BadNameKick(NetPlayer player)
     {
-        string bannedWord = ContainsBannedWord(player.Name);
-        if (bannedWord != null)
+        if (config.BanWords == true)
         {
-            player.Peer.Disconnect("You were kicked from the server for having an innapropriate name.");
+            string bannedWord = ContainsBannedWord(player.Name);
+            if (bannedWord != null)
+            {
+                player.Peer.Disconnect("You were kicked from the server for having an innapropriate name.");
+            }
         }
     }
 
     public void ModifyMessages()
     {
         GameServer.Instance.OnChatMessageModify += (sender, playerName, message, color) =>
-        {
+        {//TODO if config.banwords false then make safename just the name
             string safeName = NameCheck(playerName);
             string bannedWord = ContainsBannedWord(message);
 
-            if (bannedWord != null)
+            if (bannedWord != null)//TODO check for config.banwords
             {
                 Logger.LogCustom($"[{Name}] Blocked message from {playerName} for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
                 sender.SendChatMessage("Message blocked due to it containing a banned word.", new UnityEngine.Color(1f, 0f, 0f));
@@ -211,7 +217,7 @@ public class ChatManager: IPlugin
             }
         };
 
-        GameServer.Instance.OnJoinMessageModify += (player) =>
+        GameServer.Instance.OnJoinMessageModify += (player) =>//TODO check for config
         {
             string safeName = NameCheck(player.Name);
 
@@ -232,7 +238,7 @@ public class ChatManager: IPlugin
             return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
         };
 
-        GameServer.Instance.OnLeaveMessageModify += (player) =>
+        GameServer.Instance.OnLeaveMessageModify += (player) =>//TODO check for config
         {
             string safeName = NameCheck(player.Name);
 
@@ -255,7 +261,7 @@ public class ChatManager: IPlugin
     }
 
     private void LoadOrCreateConfig()
-    {
+    {//TODO add new bool null checkers to config
         string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         configFilePath = Path.Combine(pluginFolder, "config.json");
 
