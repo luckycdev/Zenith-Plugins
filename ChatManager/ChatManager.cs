@@ -45,7 +45,7 @@ public class ChatManager: IPlugin
 {
     public string Name => "ChatManager";
 
-    public string Version => "0.4.1-beta-0.1";
+    public string Version => "0.4.1";
 
     public string Author => "luckycdev";
 
@@ -78,7 +78,10 @@ public class ChatManager: IPlugin
         Logger.LogInfo($"[{Name}] Initialized!");
         ModifyMessages();
 
-        GameServer.Instance.OnPlayerJoined += BadNameKick;//TODO check config or maybe do in the function
+        if (config.BanWords == true)
+        {
+            GameServer.Instance.OnPlayerJoined += BadNameKick;
+        }
 
         _ = CheckForNewerVersionAsync();
     }
@@ -87,11 +90,17 @@ public class ChatManager: IPlugin
     {
         Logger.LogInfo($"[{Name}] Shutdown!");
 
-        GameServer.Instance.OnPlayerJoined -= BadNameKick;//TODO check config or maybe do in the function
+        if (config.BanWords == true)
+        {
+            GameServer.Instance.OnPlayerJoined -= BadNameKick;
+        }
     }
 
     private string ContainsBannedWord(string message)
     {
+        if (string.IsNullOrWhiteSpace(message))
+            return null;
+
         if (string.IsNullOrWhiteSpace(config.BannedWords))
             return null;
 
@@ -125,7 +134,7 @@ public class ChatManager: IPlugin
     private string NameCheck(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return "Unknown";
+            return "";//TODO console shows a : before it (only in console) - to replicate disable rankprefixes and then join or leave
 
         string bannedWord = ContainsBannedWord(name);
         if (bannedWord != null)
@@ -144,7 +153,7 @@ public class ChatManager: IPlugin
             string bannedWord = ContainsBannedWord(player.Name);
             if (bannedWord != null)
             {
-                player.Peer.Disconnect("You were kicked from the server for having an innapropriate name.");
+                player.Peer.Disconnect("You were kicked from the server for having an inappropriate name.");
             }
         }
     }
@@ -152,11 +161,21 @@ public class ChatManager: IPlugin
     public void ModifyMessages()
     {
         GameServer.Instance.OnChatMessageModify += (sender, playerName, message, color) =>
-        {//TODO if config.banwords false then make safename just the name
-            string safeName = NameCheck(playerName);
+        {
+            string safeName;
+
+            if (config.BanWords == true)
+            {
+                safeName = NameCheck(playerName);
+            }
+            else
+            {
+                safeName = playerName;
+            }
+
             string bannedWord = ContainsBannedWord(message);
 
-            if (bannedWord != null)//TODO check for config.banwords
+            if (config.BanWords == true && bannedWord != null)
             {
                 Logger.LogCustom($"[{Name}] Blocked message from {playerName} for containing banned word '{bannedWord}'", ConsoleColor.DarkRed);
                 sender.SendChatMessage("Message blocked due to it containing a banned word.", new UnityEngine.Color(1f, 0f, 0f));
@@ -217,51 +236,89 @@ public class ChatManager: IPlugin
             }
         };
 
-        GameServer.Instance.OnJoinMessageModify += (player) =>//TODO check for config
+        if (config.ChangeJoinMessages == true)
         {
-            string safeName = NameCheck(player.Name);
+            GameServer.Instance.OnJoinMessageModify += (player) =>
+            {
+                string safeName;
 
-            if (config.JoinMessage == null)
-                return default; // dont modify and use default server message
+                if (config.BanWords == true)
+                {
+                    safeName = NameCheck(player.Name);
+                }
+                else
+                {
+                    safeName = player.Name;
+                }
 
-            string msg = config.JoinMessage.Replace("{player}", safeName);
+                if (config.JoinMessage == null)
+                    return default; // dont modify and use default server message
 
-            if (player != null && (int)player.AccessLevel == 0)
-                return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                string msg = config.JoinMessage.Replace("{player}", safeName);
 
-            if (player != null && (int)player.AccessLevel == 1)
-                return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                if (config.RankPrefixes == true)
+                {
+                    if ((int)player.AccessLevel == 0)
+                        return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
 
-            if (player != null && (int)player.AccessLevel == 2)
-                return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                    if ((int)player.AccessLevel == 1)
+                        return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
 
-            return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
-        };
+                    if ((int)player.AccessLevel == 2)
+                        return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                }
+                else
+                {
+                    return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                }
 
-        GameServer.Instance.OnLeaveMessageModify += (player) =>//TODO check for config
+                return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+            };
+        }
+
+        if (config.ChangeLeaveMessages == true)
         {
-            string safeName = NameCheck(player.Name);
+            GameServer.Instance.OnLeaveMessageModify += (player) =>
+            {
+                string safeName;
 
-            if (config.LeaveMessage == null)
-                return default; // dont modify and use default server message
+                if (config.BanWords == true)
+                {
+                    safeName = NameCheck(player.Name);
+                }
+                else
+                {
+                    safeName = player.Name;
+                }
 
-            string msg = config.LeaveMessage.Replace("{player}", safeName);
+                if (config.LeaveMessage == null)
+                    return default; // dont modify and use default server message
 
-            if (player != null && (int)player.AccessLevel == 0)
-                return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+                string msg = config.LeaveMessage.Replace("{player}", safeName);
 
-            if (player != null && (int)player.AccessLevel == 1)
-                return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+                if (config.RankPrefixes == true)
+                {
+                    if ((int)player.AccessLevel == 0)
+                        return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
 
-            if (player != null && (int)player.AccessLevel == 2)
-                return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+                    if ((int)player.AccessLevel == 1)
+                        return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
 
-            return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
-        };
+                    if ((int)player.AccessLevel == 2)
+                        return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+                }
+                else
+                {
+                    return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+                }
+
+                return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
+            };
+        }
     }
 
     private void LoadOrCreateConfig()
-    {//TODO add new bool null checkers to config
+    {
         string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         configFilePath = Path.Combine(pluginFolder, "config.json");
 
@@ -322,29 +379,37 @@ public class ChatManager: IPlugin
             admin_rgb_b = config.Admin_Color_B.GetValueOrDefault() / 255f;
 
 
-            if (config.BannedWords == "badword1,bad word 2,badword 3")
-                Logger.LogError($"[{Name}] BannedWords in {configFilePath} is default! Please update it!");
-
-            // check if null
-            if (config.BannedWords == null)
-                Logger.LogError($"[{Name}] BannedWords in {configFilePath} is invalid!");
-
-            if (!config.BannedWordsStrictMode.HasValue)
-                Logger.LogError($"[{Name}] BannedWordsStrictMode in {configFilePath} is invalid!");
-
-
-            if (config.JoinMessage == null)
-                Logger.LogError($"[{Name}] JoinMessage in {configFilePath} is invalid!");
-
-            if (config.LeaveMessage == null)
-                Logger.LogError($"[{Name}] LeaveMessage in {configFilePath} is invalid!");
-
-
             if (!config.RankPrefixes.HasValue)
                 Logger.LogError($"[{Name}] RankPrefixes option in {configFilePath} is null");
 
             if (!config.RankColors.HasValue)
                 Logger.LogError($"[{Name}] RankColors option in {configFilePath} is null");
+
+            if (!config.BanWords.HasValue)
+                Logger.LogError($"[{Name}] BanWords option in {configFilePath} is null");
+
+            if (!config.ChangeJoinMessages.HasValue)
+                Logger.LogError($"[{Name}] ChangeJoinMessages option in {configFilePath} is null");
+
+            if (!config.ChangeLeaveMessages.HasValue)
+                Logger.LogError($"[{Name}] ChangeLeaveMessages option in {configFilePath} is null");
+
+
+            if (config.BanWords == true && config.BannedWords == "badword1,bad word 2,badword 3")
+                Logger.LogError($"[{Name}] BannedWords in {configFilePath} is default! Please update it!");
+
+            if (config.BanWords == true && config.BannedWords == null)
+                Logger.LogError($"[{Name}] BannedWords in {configFilePath} is invalid!");
+
+            if (config.BanWords == true && !config.BannedWordsStrictMode.HasValue)
+                Logger.LogError($"[{Name}] BannedWordsStrictMode in {configFilePath} is invalid!");
+
+
+            if (config.ChangeJoinMessages == true && config.JoinMessage == null)
+                Logger.LogError($"[{Name}] JoinMessage in {configFilePath} is invalid!");
+
+            if (config.ChangeLeaveMessages == true && config.LeaveMessage == null)
+                Logger.LogError($"[{Name}] LeaveMessage in {configFilePath} is invalid!");
 
 
             if (config.JoinMessage_Color_R == null || config.JoinMessage_Color_R > 255 || config.JoinMessage_Color_R < 0)
