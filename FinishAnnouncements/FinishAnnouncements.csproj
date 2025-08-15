@@ -6,13 +6,13 @@
 
   <ItemGroup>
     <Reference Include="Lidgren.Network">
-      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\Lidgren.Network.dll</HintPath>
+      <HintPath>..\..\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\Lidgren.Network.dll</HintPath>
     </Reference>
     <Reference Include="ServerShared">
-      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\ServerShared.dll</HintPath>
+      <HintPath>..\..\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\ServerShared.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\..\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -24,7 +24,7 @@ public class FinishAnnouncements : IPlugin
 {
     public string Name => "FinishAnnouncements";
 
-    public string Version => "1.1.1";
+    public string Version => "1.2";
 
     public string Author => "luckycdev";
 
@@ -32,9 +32,11 @@ public class FinishAnnouncements : IPlugin
     private FinishAnnouncementsConfig config;
 
     private Dictionary<int, DateTime> playerTimers = new();
-    private CancellationTokenSource cancellation;
+    private Dictionary<int, DateTime> announcementTimers = new();
+    private Dictionary<int, bool> movementChecked = new();
+    private Dictionary<int, double> fastStartAdjustments = new(); // stores skipped time from faststart
 
-    private string message;
+    private CancellationTokenSource cancellation;
 
     private float rgb_r;
     private float rgb_g;
@@ -52,7 +54,6 @@ public class FinishAnnouncements : IPlugin
         Logger.LogInfo($"[{Name}] Initialized!");
 
         _ = CheckForNewerVersionAsync();
-
         _ = CheckHeightLoopAsync(cancellation.Token);
     }
 
@@ -68,12 +69,18 @@ public class FinishAnnouncements : IPlugin
 
     private void OnPlayerJoined(NetPlayer player)
     {
-        playerTimers[player.Id] = DateTime.UtcNow; // start or restart timer
+        playerTimers[player.Id] = DateTime.UtcNow;
+        announcementTimers[player.Id] = DateTime.UtcNow;
+        movementChecked[player.Id] = false;
+        fastStartAdjustments[player.Id] = 0.0;
     }
 
     private void OnPlayerLeft(NetPlayer player)
     {
         playerTimers.Remove(player.Id);
+        announcementTimers.Remove(player.Id);
+        movementChecked.Remove(player.Id);
+        fastStartAdjustments.Remove(player.Id);
     }
 
     private async Task CheckHeightLoopAsync(CancellationToken token)
@@ -84,16 +91,45 @@ public class FinishAnnouncements : IPlugin
             {
                 foreach (var player in GameServer.Instance.Players.Values)
                 {
-                    if (playerTimers.TryGetValue(player.Id, out var startTime))
+                    float height = player.Movement.Position.y;
+
+                    if (!movementChecked.GetValueOrDefault(player.Id) && playerTimers.TryGetValue(player.Id, out var joinTime))
                     {
-                        float height = player.Movement.Position.y;
-                        if (height >= 472f)
+                        if (height > -2.3f) // player moved from spawn
+                        {
+                            movementChecked[player.Id] = true;
+
+                            double timeToMove = (DateTime.UtcNow - joinTime).TotalSeconds;
+
+                            if (timeToMove < 6.0)
+                            {
+                                double skippedAnimationTime = 6.0 - timeToMove;
+                                fastStartAdjustments[player.Id] = skippedAnimationTime;
+                            }
+                            else
+                            {
+                                fastStartAdjustments[player.Id] = 0.0;
+                            }
+
+                            announcementTimers[player.Id] = joinTime;
+                        }
+                    }
+
+                    if (announcementTimers.TryGetValue(player.Id, out var startTime))
+                    {
+                        if (height >= 473f)
                         {
                             TimeSpan duration = DateTime.UtcNow - startTime;
+                            double adjustment = fastStartAdjustments.GetValueOrDefault(player.Id);
+                            duration += TimeSpan.FromSeconds(adjustment);
+
                             string formattedTime = FormatTimeSpan(duration);
-                            message = config.Message.Replace("{player}", player.Name).Replace("{time}", formattedTime);
+                            string message = config.Message.Replace("{player}", player.Name).Replace("{time}", formattedTime);
                             GameServer.Instance.BroadcastChatMessage($"{message}", new UnityEngine.Color(rgb_r, rgb_g, rgb_b));
-                            playerTimers.Remove(player.Id); // prevent spamming
+
+                            // prevent spamming
+                            announcementTimers.Remove(player.Id);
+                            fastStartAdjustments.Remove(player.Id);
                         }
                     }
                 }
@@ -111,7 +147,6 @@ public class FinishAnnouncements : IPlugin
     {
         if (timespan.TotalHours >= 1)
             return $"{(int)timespan.TotalHours:D2}:{timespan.Minutes:D2}:{timespan.Seconds:D2}";
-
         return $"{timespan.Minutes:D2}:{timespan.Seconds:D2}";
     }
 
@@ -127,36 +162,27 @@ public class FinishAnnouncements : IPlugin
             var json = JsonSerializer.Serialize(config, options);
             File.WriteAllText(configFilePath, json);
 
-            rgb_r = config.Color_R.GetValueOrDefault() / 255f;
-            rgb_g = config.Color_G.GetValueOrDefault() / 255f;
-            rgb_b = config.Color_B.GetValueOrDefault() / 255f;
-
             Logger.LogDebug($"[{Name}] Config file created: {configFilePath}");
-
             Logger.LogWarning($"[{Name}] Please update {configFilePath} with your finish announcement message and message color!");
         }
         else
         {
             var json = File.ReadAllText(configFilePath);
             config = JsonSerializer.Deserialize<FinishAnnouncementsConfig>(json);
-
-            rgb_r = config.Color_R.GetValueOrDefault() / 255f;
-            rgb_g = config.Color_G.GetValueOrDefault() / 255f;
-            rgb_b = config.Color_B.GetValueOrDefault() / 255f;
-
-            // check if null or not rgb
-            if (string.IsNullOrWhiteSpace(config.Message))
-                Logger.LogError($"[{Name}] Message in {configFilePath} is invalid!");
-
-            if (config.Color_R == null || config.Color_R > 255 || config.Color_R < 0)
-                Logger.LogError($"[{Name}] Color_R in {configFilePath} is invalid!");
-
-            if (config.Color_G == null || config.Color_G > 255 || config.Color_G < 0)
-                Logger.LogError($"[{Name}] Color_G in {configFilePath} is invalid!");
-
-            if (config.Color_B == null || config.Color_B > 255 || config.Color_B < 0)
-                Logger.LogError($"[{Name}] Color_B in {configFilePath} is invalid!");
         }
+
+        rgb_r = config.Color_R.GetValueOrDefault() / 255f;
+        rgb_g = config.Color_G.GetValueOrDefault() / 255f;
+        rgb_b = config.Color_B.GetValueOrDefault() / 255f;
+
+        if (string.IsNullOrWhiteSpace(config.Message))
+            Logger.LogError($"[{Name}] Message in {configFilePath} is invalid!");
+        if (config.Color_R is < 0 or > 255)
+            Logger.LogError($"[{Name}] Color_R in {configFilePath} is invalid!");
+        if (config.Color_G is < 0 or > 255)
+            Logger.LogError($"[{Name}] Color_G in {configFilePath} is invalid!");
+        if (config.Color_B is < 0 or > 255)
+            Logger.LogError($"[{Name}] Color_B in {configFilePath} is invalid!");
     }
 
     private async Task CheckForNewerVersionAsync()
@@ -177,12 +203,10 @@ public class FinishAnnouncements : IPlugin
                 var localVersionStr = Version;
 
                 if (System.Version.TryParse(remoteVersionStr, out var remoteVersion) &&
-                    System.Version.TryParse(localVersionStr, out var localVersion))
+                    System.Version.TryParse(localVersionStr, out var localVersion) &&
+                    remoteVersion > localVersion)
                 {
-                    if (remoteVersion > localVersion)
-                    {
-                        Logger.LogCustom($"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
-                    }
+                    Logger.LogCustom($"[{Name}] A newer version is available! Installed: {localVersion}, Latest: {remoteVersion}", ConsoleColor.Blue);
                 }
             }
         }
