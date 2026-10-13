@@ -52,7 +52,7 @@ public class ChatManager: IPlugin
 {
     public string Name => "ChatManager";
 
-    public string Version => "0.4.2";
+    public string Version => "0.4.3";
 
     public string Author => "luckycdev";
 
@@ -225,21 +225,15 @@ public class ChatManager: IPlugin
                     safeName = player.Name;
                 }
 
-                if (config.JoinMessage == null) { }
-                    //return default; // dont modify and use default server message
+                if (string.IsNullOrWhiteSpace(config.JoinMessage)) // empty message = don't send anything
+                    return ("", new UnityEngine.Color(1f, 1f, 1f));
 
-                string msg = "";//config.JoinMessage.Replace("{player}", safeName);
+                string msg = config.JoinMessage.Replace("{player}", safeName);
 
                 if (config.RankPrefixes == true)
-                {
-                    //return ($"{GetRankStyle(player).Prefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
-                }
-                else
-                {
-                    //return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
-                }
+                    return ($"{GetRankStyle(player).Prefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
 
-                return("", new UnityEngine.Color(1, 1, 1));//return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
             };
         }
 
@@ -258,8 +252,8 @@ public class ChatManager: IPlugin
                     safeName = player.Name;
                 }
 
-                if (config.LeaveMessage == null)
-                    return default; // dont modify and use default server message
+                if (string.IsNullOrWhiteSpace(config.LeaveMessage)) // empty message = don't send anything
+                    return ("", new UnityEngine.Color(1f, 1f, 1f));
 
                 string msg = config.LeaveMessage.Replace("{player}", safeName);
 
@@ -339,11 +333,6 @@ public class ChatManager: IPlugin
                 Logger.LogError($"[{Name}] BannedWordsStrictMode in {configFilePath} is invalid!");
 
 
-            if (config.ChangeJoinMessages == true && config.JoinMessage == null)
-                Logger.LogError($"[{Name}] JoinMessage in {configFilePath} is invalid!");
-
-            if (config.ChangeLeaveMessages == true && config.LeaveMessage == null)
-                Logger.LogError($"[{Name}] LeaveMessage in {configFilePath} is invalid!");
 
 
             if (config.JoinMessage_Color_R == null || config.JoinMessage_Color_R > 255 || config.JoinMessage_Color_R < 0)
