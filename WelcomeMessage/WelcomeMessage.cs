@@ -24,7 +24,7 @@ public class WelcomeMessage : IPlugin
 {
     public string Name => "WelcomeMessage";
 
-    public string Version => "1.2.1";
+    public string Version => "1.2.2";
 
     public string Author => "luckycdev";
 
@@ -53,7 +53,7 @@ public class WelcomeMessage : IPlugin
 
         if (!commandsRegistered)
         {
-            GameServer.Instance.ChatCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
+            GameServer.Instance.PlayerCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
             Logger.LogInfo($"[{Name}] Players can now toggle the welcome message using /togglewelcomemessage");
             commandsRegistered = true;
         }
@@ -195,10 +195,15 @@ public class WelcomeMessage : IPlugin
 }
 
 [Command("Toggle welcome message", "togglewelcomemessage", "Toggles the welcome message on or off based on your IP.")]
-public class ToggleWelcomeMessageCommand : ChatCommand
+[CommandPermission("welcomemessage.toggle", DefaultRanks.Member)]
+[RequireCaller]
+public class ToggleWelcomeMessageCommand : BaseCommand
 {
     public override void Handle(string[] args)
     {
+        if (!HasAccess())
+            return;
+
         if (Caller is not NetPlayer netPlayer)
         {
             SendMessage("This command can only be run by a player.", LogMessageType.Warning); // todo needed?

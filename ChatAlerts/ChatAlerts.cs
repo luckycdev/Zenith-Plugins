@@ -24,7 +24,7 @@ public class ChatAlerts : IPlugin
 {
     public string Name => "ChatAlerts";
 
-    public string Version => "1.3.1";
+    public string Version => "1.3.2";
 
     public string Author => "luckycdev";
 
@@ -43,8 +43,8 @@ public class ChatAlerts : IPlugin
 
         if (!commandsRegistered)
         {
-            GameServer.Instance.ChatCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
-            GameServer.Instance.ConsoleCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
+            GameServer.Instance.PlayerCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
+            GameServer.Instance.ServerCommands.RegisterCommandsFromAssembly(Assembly.GetExecutingAssembly());
             commandsRegistered = true; // to stop commands duplicating on plugin reload
             // TODO: try and make it remove command instead so if reload and the command code changed it will update the command code
         }
@@ -135,14 +135,17 @@ public class ChatAlerts : IPlugin
 }
 
 [Command("Alerts a message to all players.", "alert", "Alerts a message.")]
-[RequireAuth(AccessLevel.Moderator)]
-public class AlertCommand : ChatCommand
+[CommandPermission("chatalerts.alert", DefaultRanks.Moderator)]
+public class AlertCommand : BaseCommand
 {
     [CommandArgument("Message")]
     public string Message { get; set; }
 
     public override void Handle(string[] args)
     {
+        if (!HasAccess())
+            return;
+
         GameServer.Instance.BroadcastChatMessage($"{ChatAlerts.alertPrefix} {Message}", new UnityEngine.Color(ChatAlerts.rgb_r, ChatAlerts.rgb_g, ChatAlerts.rgb_b));
     }
 }

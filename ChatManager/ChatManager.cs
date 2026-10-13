@@ -9,6 +9,15 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System;
+using System.Collections.Generic;
+
+public class RankStyle
+{
+    public string Prefix { get; set; } = "";
+    public int? Color_R { get; set; } = 255;
+    public int? Color_G { get; set; } = 255;
+    public int? Color_B { get; set; } = 255;
+}
 
 public class ChatConfig
 {
@@ -26,26 +35,24 @@ public class ChatConfig
     public int? LeaveMessage_Color_G { get; set; } = 241;
     public int? LeaveMessage_Color_B { get; set; } = 146;
     public bool? RankPrefixes { get; set; } = true;
-    public string AdminPrefix { get; set; } = "[Admin] ";
-    public string ModPrefix { get; set; } = "[Mod] ";
-    public string PlayerPrefix { get; set; } = "";
     public bool? RankColors { get; set; } = true;
-    public int? Player_Color_R { get; set; } = 255;
-    public int? Player_Color_G { get; set; } = 255;
-    public int? Player_Color_B { get; set; } = 255;
-    public int? Mod_Color_R { get; set; } = 151;
-    public int? Mod_Color_G { get; set; } = 255;
-    public int? Mod_Color_B { get; set; } = 104;
-    public int? Admin_Color_R { get; set; } = 255;
-    public int? Admin_Color_G { get; set; } = 128;
-    public int? Admin_Color_B { get; set; } = 128;
+    // Chat prefix and color per rank name (the rank names from Zenith's permissions.json).
+    // Ranks that aren't listed here get no prefix and white text.
+    public Dictionary<string, RankStyle> Ranks { get; set; } = DefaultRankStyles();
+
+    public static Dictionary<string, RankStyle> DefaultRankStyles() => new Dictionary<string, RankStyle>(StringComparer.OrdinalIgnoreCase)
+    {
+        [DefaultRanks.Member] = new RankStyle { Prefix = "", Color_R = 255, Color_G = 255, Color_B = 255 },
+        [DefaultRanks.Moderator] = new RankStyle { Prefix = "[Mod] ", Color_R = 151, Color_G = 255, Color_B = 104 },
+        [DefaultRanks.Admin] = new RankStyle { Prefix = "[Admin] ", Color_R = 255, Color_G = 128, Color_B = 128 },
+    };
 }
 
 public class ChatManager: IPlugin
 {
     public string Name => "ChatManager";
 
-    public string Version => "0.4.1";
+    public string Version => "0.4.2";
 
     public string Author => "luckycdev";
 
@@ -59,18 +66,6 @@ public class ChatManager: IPlugin
     private float leavemessage_rgb_r;
     private float leavemessage_rgb_g;
     private float leavemessage_rgb_b;
-
-    private float player_rgb_r;
-    private float player_rgb_g;
-    private float player_rgb_b;
-
-    private float mod_rgb_r;
-    private float mod_rgb_g;
-    private float mod_rgb_b;
-
-    private float admin_rgb_r;
-    private float admin_rgb_g;
-    private float admin_rgb_b;
 
     public void Initialize()
     {
@@ -94,6 +89,23 @@ public class ChatManager: IPlugin
         {
             GameServer.Instance.OnPlayerJoined -= BadNameKick;
         }
+    }
+
+    // Gets the chat prefix and color for a player's rank. Ranks not listed in the config get no prefix and white.
+    private (string Prefix, UnityEngine.Color Color) GetRankStyle(NetPlayer player)
+    {
+        if (config.Ranks != null
+            && !string.IsNullOrWhiteSpace(player.RankName)
+            && config.Ranks.TryGetValue(player.RankName, out var style)
+            && style != null)
+        {
+            return (style.Prefix ?? "", new UnityEngine.Color(
+                style.Color_R.GetValueOrDefault(255) / 255f,
+                style.Color_G.GetValueOrDefault(255) / 255f,
+                style.Color_B.GetValueOrDefault(255) / 255f));
+        }
+
+        return ("", new UnityEngine.Color(1f, 1f, 1f));
     }
 
     private string ContainsBannedWord(string message)
@@ -182,58 +194,20 @@ public class ChatManager: IPlugin
                 return default; // stop the message from sending
             }
 
-            if (config.RankPrefixes == true && config.RankColors == true)
-            {
-                if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{config.PlayerPrefix}{safeName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
+            if (sender == null)
+                return (config.RankPrefixes == true ? playerName : safeName, message, color);
 
-                if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{config.ModPrefix}{safeName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
+            var style = GetRankStyle(sender);
 
-                if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{config.AdminPrefix}{safeName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
+            string displayName = config.RankPrefixes == true
+                ? $"{style.Prefix}{safeName}".Trim()
+                : safeName.Trim();
 
-                return (playerName, message, color);
-            }
-            else if (config.RankPrefixes == true && config.RankColors == false)
-            {
-                if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{config.PlayerPrefix}{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
+            UnityEngine.Color displayColor = config.RankColors == true
+                ? style.Color
+                : new UnityEngine.Color(1f, 1f, 1f);
 
-                if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{config.ModPrefix}{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
-
-                if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{config.AdminPrefix}{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
-
-                return (playerName, message, color);
-            }
-            else if (config.RankPrefixes == false && config.RankColors == true)
-            {
-                if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(player_rgb_r, player_rgb_g, player_rgb_b));
-
-                if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(mod_rgb_r, mod_rgb_g, mod_rgb_b));
-
-                if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(admin_rgb_r, admin_rgb_g, admin_rgb_b));
-
-                return (safeName, message, color);
-            }
-            else // no prefix and no color
-            {
-                if (sender != null && (int)sender.AccessLevel == 0)
-                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
-
-                if (sender != null && (int)sender.AccessLevel == 1)
-                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
-
-                if (sender != null && (int)sender.AccessLevel == 2)
-                    return ($"{safeName}".Trim(), message, new UnityEngine.Color(1f, 1f, 1f));
-
-                return (safeName, message, color);
-            }
+            return (displayName, message, displayColor);
         };
 
         if (config.ChangeJoinMessages == true)
@@ -251,28 +225,21 @@ public class ChatManager: IPlugin
                     safeName = player.Name;
                 }
 
-                if (config.JoinMessage == null)
-                    return default; // dont modify and use default server message
+                if (config.JoinMessage == null) { }
+                    //return default; // dont modify and use default server message
 
-                string msg = config.JoinMessage.Replace("{player}", safeName);
+                string msg = "";//config.JoinMessage.Replace("{player}", safeName);
 
                 if (config.RankPrefixes == true)
                 {
-                    if ((int)player.AccessLevel == 0)
-                        return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
-
-                    if ((int)player.AccessLevel == 1)
-                        return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
-
-                    if ((int)player.AccessLevel == 2)
-                        return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                    //return ($"{GetRankStyle(player).Prefix}{msg}", new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
                 }
                 else
                 {
-                    return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                    //return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
                 }
 
-                return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
+                return("", new UnityEngine.Color(1, 1, 1));//return (msg, new UnityEngine.Color(joinmessage_rgb_r, joinmessage_rgb_g, joinmessage_rgb_b));
             };
         }
 
@@ -297,20 +264,7 @@ public class ChatManager: IPlugin
                 string msg = config.LeaveMessage.Replace("{player}", safeName);
 
                 if (config.RankPrefixes == true)
-                {
-                    if ((int)player.AccessLevel == 0)
-                        return ($"{config.PlayerPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
-
-                    if ((int)player.AccessLevel == 1)
-                        return ($"{config.ModPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
-
-                    if ((int)player.AccessLevel == 2)
-                        return ($"{config.AdminPrefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
-                }
-                else
-                {
-                    return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
-                }
+                    return ($"{GetRankStyle(player).Prefix}{msg}", new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
 
                 return (msg, new UnityEngine.Color(leavemessage_rgb_r, leavemessage_rgb_g, leavemessage_rgb_b));
             };
@@ -337,18 +291,6 @@ public class ChatManager: IPlugin
             leavemessage_rgb_g = config.LeaveMessage_Color_G.GetValueOrDefault() / 255f;
             leavemessage_rgb_b = config.LeaveMessage_Color_B.GetValueOrDefault() / 255f;
 
-            player_rgb_r = config.Player_Color_R.GetValueOrDefault() / 255f;
-            player_rgb_g = config.Player_Color_G.GetValueOrDefault() / 255f;
-            player_rgb_b = config.Player_Color_B.GetValueOrDefault() / 255f;
-
-            mod_rgb_r = config.Mod_Color_R.GetValueOrDefault() / 255f;
-            mod_rgb_g = config.Mod_Color_G.GetValueOrDefault() / 255f;
-            mod_rgb_b = config.Mod_Color_B.GetValueOrDefault() / 255f;
-
-            admin_rgb_r = config.Admin_Color_R.GetValueOrDefault() / 255f;
-            admin_rgb_g = config.Admin_Color_G.GetValueOrDefault() / 255f;
-            admin_rgb_b = config.Admin_Color_B.GetValueOrDefault() / 255f;
-
             Logger.LogDebug($"[{Name}] Config file created: {configFilePath}");
 
             Logger.LogWarning($"[{Name}] Please see {configFilePath} to change settings!");
@@ -358,6 +300,10 @@ public class ChatManager: IPlugin
             var json = File.ReadAllText(configFilePath);
             config = JsonSerializer.Deserialize<ChatConfig>(json);
 
+            // Rank names are case-insensitive.
+            if (config.Ranks != null)
+                config.Ranks = new Dictionary<string, RankStyle>(config.Ranks, StringComparer.OrdinalIgnoreCase);
+
             joinmessage_rgb_r = config.JoinMessage_Color_R.GetValueOrDefault() / 255f;
             joinmessage_rgb_g = config.JoinMessage_Color_G.GetValueOrDefault() / 255f;
             joinmessage_rgb_b = config.JoinMessage_Color_B.GetValueOrDefault() / 255f;
@@ -365,18 +311,6 @@ public class ChatManager: IPlugin
             leavemessage_rgb_r = config.LeaveMessage_Color_R.GetValueOrDefault() / 255f;
             leavemessage_rgb_g = config.LeaveMessage_Color_G.GetValueOrDefault() / 255f;
             leavemessage_rgb_b = config.LeaveMessage_Color_B.GetValueOrDefault() / 255f;
-
-            player_rgb_r = config.Player_Color_R.GetValueOrDefault() / 255f;
-            player_rgb_g = config.Player_Color_G.GetValueOrDefault() / 255f;
-            player_rgb_b = config.Player_Color_B.GetValueOrDefault() / 255f;
-
-            mod_rgb_r = config.Mod_Color_R.GetValueOrDefault() / 255f;
-            mod_rgb_g = config.Mod_Color_G.GetValueOrDefault() / 255f;
-            mod_rgb_b = config.Mod_Color_B.GetValueOrDefault() / 255f;
-
-            admin_rgb_r = config.Admin_Color_R.GetValueOrDefault() / 255f;
-            admin_rgb_g = config.Admin_Color_G.GetValueOrDefault() / 255f;
-            admin_rgb_b = config.Admin_Color_B.GetValueOrDefault() / 255f;
 
 
             if (!config.RankPrefixes.HasValue)
@@ -432,43 +366,25 @@ public class ChatManager: IPlugin
                 Logger.LogError($"[{Name}] LeaveMessage_Color_B in {configFilePath} is invalid!");
 
 
-            if (config.RankPrefixes == true && config.PlayerPrefix == null)
-                Logger.LogError($"[{Name}] PlayerPrefix in {configFilePath} is invalid!");
+            if (config.Ranks != null)
+            {
+                foreach (var entry in config.Ranks)
+                {
+                    if (entry.Value == null)
+                    {
+                        Logger.LogError($"[{Name}] Ranks entry '{entry.Key}' in {configFilePath} is invalid!");
+                        continue;
+                    }
 
-            if (config.RankColors == true && (config.Player_Color_R == null || config.Player_Color_R > 255 || config.Player_Color_R < 0))
-                Logger.LogError($"[{Name}] Player_Color_R in {configFilePath} is invalid!");
+                    if (config.RankPrefixes == true && entry.Value.Prefix == null)
+                        Logger.LogError($"[{Name}] Prefix for rank '{entry.Key}' in {configFilePath} is invalid!");
 
-            if (config.RankColors == true && (config.Player_Color_G == null || config.Player_Color_G > 255 || config.Player_Color_G < 0))
-                Logger.LogError($"[{Name}] Player_Color_G in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Player_Color_B == null || config.Player_Color_B > 255 || config.Player_Color_B < 0))
-                Logger.LogError($"[{Name}] Player_Color_B in {configFilePath} is invalid!");
-
-
-            if (config.RankPrefixes == true && config.ModPrefix == null)
-                Logger.LogError($"[{Name}] ModPrefix in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Mod_Color_R == null || config.Mod_Color_R > 255 || config.Mod_Color_R < 0))
-                Logger.LogError($"[{Name}] Mod_Color_R in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Mod_Color_G == null || config.Mod_Color_G > 255 || config.Mod_Color_G < 0))
-                Logger.LogError($"[{Name}] Mod_Color_G in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Mod_Color_B == null || config.Mod_Color_B > 255 || config.Mod_Color_B < 0))
-                Logger.LogError($"[{Name}] Mod_Color_B in {configFilePath} is invalid!");
-
-
-            if (config.RankPrefixes == true && config.AdminPrefix == null)
-                Logger.LogError($"[{Name}] AdminPrefix in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Admin_Color_R == null || config.Admin_Color_R > 255 || config.Admin_Color_R < 0))
-                Logger.LogError($"[{Name}] Admin_Color_R in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Admin_Color_G == null || config.Admin_Color_G > 255 || config.Admin_Color_G < 0))
-                Logger.LogError($"[{Name}] Admin_Color_G in {configFilePath} is invalid!");
-
-            if (config.RankColors == true && (config.Admin_Color_B == null || config.Admin_Color_B > 255 || config.Admin_Color_B < 0))
-                Logger.LogError($"[{Name}] Admin_Color_B in {configFilePath} is invalid!");
+                    if (config.RankColors == true && (entry.Value.Color_R == null || entry.Value.Color_R > 255 || entry.Value.Color_R < 0
+                        || entry.Value.Color_G == null || entry.Value.Color_G > 255 || entry.Value.Color_G < 0
+                        || entry.Value.Color_B == null || entry.Value.Color_B > 255 || entry.Value.Color_B < 0))
+                        Logger.LogError($"[{Name}] Color for rank '{entry.Key}' in {configFilePath} is invalid!");
+                }
+            }
         }
     }
 
