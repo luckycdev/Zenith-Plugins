@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <!-- class libraries don't copy NuGet package dlls to the output by default; ILRepack needs them there -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
 <ItemGroup>
@@ -13,10 +15,8 @@
 
   <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
 
-  <PackageReference Include="Fody" Version="6.9.2">
-    <PrivateAssets>all</PrivateAssets>
-  </PackageReference>
-  <PackageReference Include="Costura.Fody" Version="6.0.0">
+  <!-- Merges the Discord.Net dlls into GOICord.dll after every build (see ILRepack.targets) -->
+  <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2">
     <PrivateAssets>all</PrivateAssets>
   </PackageReference>
 </ItemGroup>

@@ -23,7 +23,7 @@ public class GOICord : IPlugin
 {
     public string Name => "GOICord";
 
-    public string Version => "0.8.1";
+    public string Version => "0.8.2";
 
     public string Author => "luckycdev";
 

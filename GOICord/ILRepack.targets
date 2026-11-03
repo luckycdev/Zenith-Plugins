@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Merges the Discord.Net dlls into GOICord.dll after every build (Debug and Release), so the plugin is one dll.
+       Only the listed assemblies are merged: the Zenith dlls (ServerShared etc.) must stay separate or Zenith
+       won't recognize the plugin. -->
+  <Target Name="ILRepacker" AfterTargets="Build">
+    <ItemGroup>
+      <InputAssemblies Include="$(TargetPath)" />
+      <!-- the real runtime dlls NuGet copies to the output (not reference-only assemblies, which can't be merged) -->
+      <InputAssemblies Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll' And ('%(Filename)' == 'Discord.Net.Core' Or '%(Filename)' == 'Discord.Net.Rest' Or '%(Filename)' == 'Discord.Net.WebSocket' Or '%(Filename)' == 'System.Collections.Immutable')" />
+      <!-- every folder references came from, so ILRepack can resolve System.Runtime, ServerShared, etc. -->
+      <_RepackLibDirs Include="@(ReferencePathWithRefAssemblies->'%(RootDir)%(Directory)')" />
+      <_RepackLibDirs Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+    <RemoveDuplicates Inputs="@(_RepackLibDirs)">
+      <Output TaskParameter="Filtered" ItemName="RepackLibDirs" />
+    </RemoveDuplicates>
+    <ILRepack
+      Parallel="true"
+      Internalize="false"
+      DebugInfo="true"
+      TargetKind="SameAsPrimaryAssembly"
+      InputAssemblies="@(InputAssemblies)"
+      LibraryPath="@(RepackLibDirs)"
+      OutputFile="$(TargetPath)" />
+  </Target>
+</Project>
