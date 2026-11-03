@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Merges LiteNetLib into GOILauncherBridge.dll after every build (Debug and Release), so the plugin is one dll.
+       Only LiteNetLib is merged: the Zenith dlls (ServerShared etc.) must stay separate or Zenith won't
+       recognize the plugin. -->
+  <Target Name="ILRepacker" AfterTargets="Build">
+    <ItemGroup>
+      <InputAssemblies Include="$(TargetPath)" />
+      <InputAssemblies Include="@(ReferencePathWithRefAssemblies)" Condition="'%(Filename)' == 'LiteNetLib'" />
+      <!-- every folder the compiler took references from (the .NET 5 reference pack, Zenith's bin folder),
+           so ILRepack can resolve System.Runtime, ServerShared, etc. -->
+      <_RepackLibDirs Include="@(ReferencePathWithRefAssemblies->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+    <RemoveDuplicates Inputs="@(_RepackLibDirs)">
+      <Output TaskParameter="Filtered" ItemName="RepackLibDirs" />
+    </RemoveDuplicates>
+    <ILRepack
+      Parallel="true"
+      Internalize="false"
+      DebugInfo="true"
+      TargetKind="SameAsPrimaryAssembly"
+      InputAssemblies="@(InputAssemblies)"
+      LibraryPath="@(RepackLibDirs)"
+      OutputFile="$(TargetPath)" />
+  </Target>
+</Project>

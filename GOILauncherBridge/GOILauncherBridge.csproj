@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+<ItemGroup>
+  <!-- Merges lib/LiteNetLib.dll into GOILauncherBridge.dll after every build (see ILRepack.targets) -->
+  <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2">
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+</ItemGroup>
+
+  <ItemGroup>
+    <!-- Zonakkis' LiteNetLib fork (0.9 branch). Not the NuGet LiteNetLib: the fork has a newer packet
+         format that GOILauncher clients use. -->
+    <Reference Include="LiteNetLib">
+      <HintPath>lib\LiteNetLib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Lidgren.Network">
+      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\Lidgren.Network.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ServerShared">
+      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\ServerShared.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\Zenith\Zenith\GettingOverItMP.Server\bin\Debug\net5.0\UnityEngine.CoreModule.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
